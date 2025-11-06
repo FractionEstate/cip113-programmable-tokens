@@ -1,14 +1,14 @@
 # Programmable Tokens - Aiken Implementation
 
 ![Aiken](https://img.shields.io/badge/Aiken-v1.0.29-blue)
-![CIP-143](https://img.shields.io/badge/CIP--143-Based-green)
+![CIP-113](https://img.shields.io/badge/CIP--113-Adapted-green)
 ![Status](https://img.shields.io/badge/Status-R&D-yellow)
 
-**Smart contracts for CIP-143 programmable tokens on Cardano, written in Aiken.**
+**Smart contracts for CIP-113 programmable tokens on Cardano, written in Aiken.**
 
 ## Overview
 
-This repository contains a complete Aiken implementation of CIP-143 programmable tokens - native Cardano assets enhanced with programmable transfer rules and lifecycle controls. Programmable tokens enable regulatory compliance for real-world assets like stablecoins and tokenized securities while maintaining full compatibility with the Cardano native token infrastructure.
+This repository contains a complete Aiken implementation of CIP-113 programmable tokens - native Cardano assets enhanced with programmable transfer rules and lifecycle controls. This implementation is based on the foundational CIP-143 architecture, adapted for CIP-113 requirements. Programmable tokens enable regulatory compliance for real-world assets like stablecoins and tokenized securities while maintaining full compatibility with the Cardano native token infrastructure.
 
 ## What Are Programmable Tokens?
 
@@ -72,10 +72,13 @@ aiken blueprint convert > plutus.json
 ├── validators/          # Smart contract validators
 │   ├── programmable_logic_global.ak    # Core transfer validation
 │   ├── programmable_logic_base.ak      # Token custody
-│   ├── directory_mint.ak               # Registry minting policy
-│   ├── directory_spend.ak              # Registry spending validator
+│   ├── registry_mint.ak                # Registry minting policy
+│   ├── registry_spend.ak               # Registry spending validator
 │   ├── issuance_mint.ak                # Token issuance policy
+│   ├── issuance_cbor_hex_mint.ak       # CBOR hex reference NFT
+│   ├── protocol_params_mint.ak         # Protocol parameters NFT
 │   ├── example_transfer_logic.ak       # Example: freeze-and-seize
+│   ├── blacklist_mint.ak               # Blacklist management
 │   └── ...
 ├── lib/
 │   ├── types.ak                        # Core data types
@@ -96,11 +99,6 @@ aiken blueprint convert > plutus.json
 - **[Usage Guide](./docs/06-USAGE.md)** - Build, test, and deploy
 - **[Migration Notes](./docs/07-MIGRATION-NOTES.md)** - Plutarch to Aiken migration
 
-### Additional Resources
-
-- 📖 [CIP-143 Flow Documentation](../../../CIP-0143-FLOW.md) - Complete transaction flows
-- 🏛️ [Architecture Overview](../../../doc/architecture.md) - High-level system design
-- 🔄 [CIP-113 Comparison](../../../CIP-113-COMPARISON.md) - Standards comparison
 
 ## Core Components
 
@@ -190,11 +188,11 @@ This implementation includes a complete example of a regulated stablecoin with f
 
 See [`validators/example_transfer_logic.ak`](./validators/example_transfer_logic.ak) for the implementation.
 
-## CIP-143 Standard
+## Standards
 
-This implementation is based on [CIP-143 (Interoperable Programmable Tokens)](https://github.com/cardano-foundation/CIPs/tree/master/CIP-0143), which defines a standard for programmable token lifecycle management on Cardano.
+This implementation is based on the foundational [CIP-143 (Interoperable Programmable Tokens)](https://cips.cardano.org/cip/CIP-0143) architecture and has been adapted for [CIP-113](https://github.com/cardano-foundation/CIPs/pull/444), which supersedes CIP-143 as a more comprehensive standard for programmable tokens on Cardano.
 
-**Note**: CIP-143 has been incorporated into the newer [CIP-113](https://github.com/HarmonicLabs/CIPs/tree/master/CIP-0113) proposal. This implementation follows CIP-143 and includes features useful for regulated tokens. See [CIP-113 Comparison](../../../CIP-113-COMPARISON.md) for differences.
+**Note**: CIP-113 is currently under active development. This implementation reflects the current understanding of the standard and may require updates as CIP-113 evolves.
 
 ## Development Status
 
@@ -263,30 +261,33 @@ aiken check -m validators/programmable_logic_global
 aiken check --watch
 ```
 
-## Related Repositories
+## Related Components
 
-- **Off-chain (Java)**: [`programmable-tokens-offchain-java/`](../programmable-tokens-offchain-java/)
-- **Plutarch Implementation**: [`programmable-tokens-onchain/`](../programmable-tokens-onchain/)
-- **Frontend**: [`frontend/`](../../frontend/)
+- **Off-chain (Java)**: [`programmable-tokens-offchain-java/`](../programmable-tokens-offchain-java/) - Transaction building and blockchain integration
 
 ## Resources
 
 - 📖 [Aiken Language Documentation](https://aiken-lang.org/)
-- 🎓 [CIP-143 Specification](https://github.com/cardano-foundation/CIPs/tree/master/CIP-0143)
+- 🎓 [CIP-143 Specification](https://cips.cardano.org/cip/CIP-0143) - Original standard
+- 🔄 [CIP-113 Pull Request](https://github.com/cardano-foundation/CIPs/pull/444) - Current standard development
 - 🔗 [Cardano Developer Portal](https://developers.cardano.org/)
 - 💬 [Aiken Discord](https://discord.gg/Vc3x8N9nz2)
 
 ## License
 
-⚠️ **License TBD** - Please check with repository maintainers before use.
+This project is licensed under the Apache License 2.0 - see the [LICENSE](../../LICENSE) file for details.
+
+Copyright 2024 Cardano Foundation
 
 ## Acknowledgments
 
-This implementation is based on the original Plutarch design by the Programmable Tokens working group. Special thanks to:
+This implementation is migrated from the original Plutarch implementation developed by **Phil DiSarro** and the **IOG Team** (see [wsc-poc](https://github.com/input-output-hk/wsc-poc)). We are grateful for their foundational work on CIP-143.
 
-- The Aiken team for the excellent smart contract language
-- The CIP-143 authors and contributors
-- The Cardano developer community
+Special thanks to:
+- **Phil DiSarro** and the **IOG Team** for the original Plutarch design and implementation
+- The **Aiken team** for the excellent smart contract language and tooling
+- The **CIP-143/CIP-113 authors and contributors** for standard development
+- The **Cardano developer community** for continued support and collaboration
 
 ---
 

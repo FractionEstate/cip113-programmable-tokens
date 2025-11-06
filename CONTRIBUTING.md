@@ -78,7 +78,7 @@ Make sure **all** tests are successful before submitting a pull request.
 
 **Java code**: Follow the [Google style guide for Java](https://google.github.io/styleguide/javaguide.html)
 
-**Aiken code**: Follow [Aiken best practices](https://aiken-lang.org/language-tour/basics) and conventions
+**Aiken code**: Follow [Aiken best practices](https://aiken-lang.org) and conventions
 
 More importantly, check if the coding style you find is consistent and report or fix any inconsistencies by filing an issue or a pull request. Make sure to file a separate pull request for style changes.
 
