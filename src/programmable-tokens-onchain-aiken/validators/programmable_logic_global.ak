@@ -5,17 +5,15 @@ use aiken/collection/list
 // Migrated from SmartTokens.Contracts.ProgrammableLogicBase (mkProgrammableLogicGlobal)
 
 use cardano/address.{Credential, Inline, Script, VerificationKey}
-use cardano/assets.{
-  PolicyId, Value, merge, negate, policies, restricted_to, zero,
-}
+use cardano/assets.{PolicyId, Value, merge, policies, zero}
 use cardano/transaction.{Input, Output, Transaction}
 use types.{
   ProgrammableLogicGlobalParams, ProgrammableLogicGlobalRedeemer, RegistryNode,
   RegistryProof, ThirdPartyAct, TokenDoesNotExist, TokenExists, TransferAct,
 }
 use utils.{
-  bytearray_lt, elem_at, expect_inline_datum, has_currency_symbol,
-  is_script_invoked, is_signed_by, value_contains,
+  bytearray_lt, elem_at, expect_inline_datum, expect_value_contains_v3,
+  has_currency_symbol, is_script_invoked, is_signed_by,
 }
 
 validator programmable_logic_global(protocol_params_cs: PolicyId) {
@@ -139,7 +137,8 @@ fn validate_transfer(
     )
 
   // The output must contain all the validated programmable tokens
-  value_contains(output_prog_value, validated_prog_value)?
+  expect_value_contains_v3(output_prog_value, validated_prog_value)
+  True
 }
 
 /// Validate a third party action (seizure, freeze, etc.) on multiple UTxOs
@@ -169,58 +168,52 @@ fn validate_third_party(
 
   // Process each input-output pair
   // For each input at input_idxs[i], there should be a corresponding output at outputs_start_idx + i
-  let matching_outputs =
-    list.indexed_foldr(
-      input_idxs,
-      True,
-      fn(idx, input_idx, acc) {
-        // Get the input being processed
-        let input = elem_at(tx.inputs, input_idx)
+  list.indexed_foldr(
+    input_idxs,
+    Void,
+    fn(idx, input_idx, _acc) {
+      // Get the input being processed
+      let input = elem_at(tx.inputs, input_idx)
 
-        // Calculate corresponding output index
-        let output_idx = outputs_start_idx + idx
-        let output = elem_at(tx.outputs, output_idx)
+      // Calculate corresponding output index
+      let output_idx = outputs_start_idx + idx
+      let output = elem_at(tx.outputs, output_idx)
 
-        // Filter the input value to only include tokens from this policy
-        let filtered_value = restricted_to(input.output.value, [policy_id])
+      let expected_output_dict =
+        assets.to_dict(input.output.value) |> dict.delete(policy_id)
 
-        // Expected output value is input value with policy tokens removed
-        let expected_output_value =
-          merge(input.output.value, negate(filtered_value))
-
-        and {
-          acc,
-          // Must be from prog_logic_cred
-          input.output.address.payment_credential == prog_logic_cred,
-          // Validate the output matches expectations:
-          // - Same address
-          // - Value with tokens removed
-          // - Same datum
-          output.address == input.output.address,
-          output.value == expected_output_value,
-          output.datum == input.output.datum,
-          // Prevent DDOS: must actually remove some tokens
-          input.output.value != expected_output_value,
-        }
-      },
-    )
+      // // Filter the input value to only include tokens from this policy
+      // let filtered_value = restricted_to(input.output.value, [policy_id])
+      // // Expected output value is input value with policy tokens removed
+      // let expected_output_value =
+      //   merge(input.output.value, negate(filtered_value))
+      // Must be from prog_logic_cred
+      expect input.output.address.payment_credential == prog_logic_cred
+      // Validate the output matches expectations:
+      // - Same address
+      // - Value with tokens removed
+      // - Same datum
+      expect output.address == input.output.address
+      expect assets.to_dict(output.value) == expected_output_dict
+      expect output.datum == input.output.datum
+      // Prevent DDOS: must actually remove some tokens
+      expect assets.to_dict(input.output.value) != expected_output_dict
+    },
+  )
 
   // Verify that ONLY the specified inputs from prog_logic_cred are consumed
   // Count how many inputs from prog_logic_cred are in the transaction
   let prog_input_count =
-    list.length(
-      list.filter(
-        tx.inputs,
-        fn(input) { input.output.address.payment_credential == prog_logic_cred },
-      ),
+    list.count(
+      tx.inputs,
+      fn(input) { input.output.address.payment_credential == prog_logic_cred },
     )
-
   and {
     // Validate registry node is authentic
     has_currency_symbol(registry_ref_input.output.value, registry_node_cs),
     // The third party transfer logic script must be invoked
     list.has(invoked_scripts, registry_node.third_party_transfer_logic_script),
-    matching_outputs,
+    // matching_outputs,
     // Must match the number of inputs we're processing
     prog_input_count == length_input_idxs,
   }
@@ -269,11 +262,6 @@ fn get_signed_prog_inputs(
 /// Sum values from a list of inputs
 fn sum_input_values(inputs: List<Input>) -> Value {
   list.foldl(inputs, zero, fn(input, acc) { merge(acc, input.output.value) })
-}
-
-/// Sum values from a list of outputs
-fn sum_output_values(outputs: List<Output>) -> Value {
-  list.foldl(outputs, zero, fn(output, acc) { merge(acc, output.value) })
 }
 
 /// Check transfer logic for each currency symbol and filter to only programmable tokens
