@@ -1,15 +1,15 @@
 spring:
   flyway:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/cip143}
-    user: ${DB_USERNAME:cip143}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/cip113}
+    user: ${DB_USERNAME:cardano}
     password: ${DB_PASSWORD:password}
     schemas: ${DB_SCHEMA:public}
     locations:
       - classpath:db/store/{vendor}
     out-of-order: true
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/cip143}
-    username: ${DB_USERNAME:cip143}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/cip113}
+    username: ${DB_USERNAME:cardano}
     password: ${DB_PASSWORD:password}
 
 network: mainnet

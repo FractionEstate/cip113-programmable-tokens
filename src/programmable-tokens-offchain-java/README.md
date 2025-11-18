@@ -11,7 +11,7 @@ Init local dev psql db
 Then create db:
 
 ```
-CREATE USER cip143 PASSWORD 'password';
+CREATE USER cardano PASSWORD 'password';
 
-CREATE DATABASE cip143 WITH OWNER cip143;
+CREATE DATABASE cip113 WITH OWNER cardano;
 ```
