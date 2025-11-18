@@ -13,7 +13,9 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigInteger;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 public class BalanceValueHelper {
@@ -122,5 +124,47 @@ public class BalanceValueHelper {
         boolean hasAssets = value.getMultiAssets() != null && !value.getMultiAssets().isEmpty();
 
         return !hasCoin && !hasAssets;
+    }
+
+    /**
+     * Calculate the signed difference between two balances
+     * Returns a map with signed amounts (negative amounts prefixed with "-")
+     *
+     * @param currentBalance the current balance as JSON
+     * @param previousBalance the previous balance as JSON (or null for first entry)
+     * @return map of unit to signed amount difference
+     */
+    public static Map<String, String> calculateSignedDiff(String currentBalance, String previousBalance) {
+        Map<String, String> current = toUnitMap(fromJson(currentBalance));
+
+        Map<String, String> previous = previousBalance != null
+            ? toUnitMap(fromJson(previousBalance))
+            : new HashMap<>();
+
+        Map<String, String> diff = new HashMap<>();
+
+        // Get all units from both current and previous
+        Set<String> allUnits = new HashSet<>();
+        allUnits.addAll(current.keySet());
+        allUnits.addAll(previous.keySet());
+
+        for (String unit : allUnits) {
+            BigInteger currentAmount = current.containsKey(unit)
+                ? new BigInteger(current.get(unit))
+                : BigInteger.ZERO;
+
+            BigInteger previousAmount = previous.containsKey(unit)
+                ? new BigInteger(previous.get(unit))
+                : BigInteger.ZERO;
+
+            BigInteger difference = currentAmount.subtract(previousAmount);
+
+            // Only include non-zero differences
+            if (difference.compareTo(BigInteger.ZERO) != 0) {
+                diff.put(unit, difference.toString());
+            }
+        }
+
+        return diff;
     }
 }
