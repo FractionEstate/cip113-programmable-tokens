@@ -96,20 +96,26 @@ public class BalanceController {
     }
 
     /**
-     * Get current balances by payment script hash and stake key hash
+     * Get current balance by payment script hash and stake key hash
+     * Payment script + stake key uniquely identifies an address, so returns at most one entry
      *
      * @param scriptHash the payment script hash
      * @param stakeHash the stake key hash
-     * @return list of latest balances
+     * @return the latest balance or 404 if not found
      */
     @GetMapping("/current-by-payment-and-stake/{scriptHash}/{stakeHash}")
-    public ResponseEntity<List<BalanceLogEntity>> getCurrentBalanceByPaymentScriptAndStakeKey(
+    public ResponseEntity<BalanceLogEntity> getCurrentBalanceByPaymentScriptAndStakeKey(
             @PathVariable String scriptHash,
             @PathVariable String stakeHash) {
-        log.debug("GET /current-by-payment-and-stake/{}/{} - fetching balances", scriptHash, stakeHash);
+        log.debug("GET /current-by-payment-and-stake/{}/{} - fetching balance", scriptHash, stakeHash);
         List<BalanceLogEntity> balances = balanceService.getLatestBalancesByPaymentScriptAndStakeKey(
                 scriptHash, stakeHash);
-        return ResponseEntity.ok(balances);
+
+        // Payment script + stake key uniquely identifies one address, so at most one result
+        return balances.stream()
+                .findFirst()
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     /**
