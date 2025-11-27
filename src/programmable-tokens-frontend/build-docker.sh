@@ -65,11 +65,16 @@ build_network() {
     echo -e "${BLUE}Version tag: ${VERSION_TAG}${NC}"
     echo -e "${BLUE}Blockfrost URL: ${BLOCKFROST_URL}${NC}"
 
+    # Get base URL for this network (optional)
+    local BASE_URL_VAR="NEXT_PUBLIC_BASE_URL_${NETWORK^^}"
+    local BASE_URL="${!BASE_URL_VAR:-}"
+
     # Build the Docker image
-    docker build \
+    docker build --push \
         --build-arg NEXT_PUBLIC_NETWORK=$NETWORK \
         --build-arg NEXT_PUBLIC_BLOCKFROST_API_KEY=$API_KEY \
         --build-arg NEXT_PUBLIC_BLOCKFROST_URL=$BLOCKFROST_URL \
+        ${BASE_URL:+--build-arg NEXT_PUBLIC_BASE_URL=$BASE_URL} \
         -t ${DOCKER_REPO}:${VERSION_TAG} \
         -t ${DOCKER_REPO}:${NETWORK_TAG} \
         .

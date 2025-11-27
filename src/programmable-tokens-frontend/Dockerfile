@@ -21,15 +21,20 @@ COPY --from=deps /app/node_modules ./node_modules
 # Copy source code
 COPY . .
 
+# Ensure public directory exists (for static assets)
+RUN mkdir -p public
+
 # Build arguments for environment variables
 ARG NEXT_PUBLIC_NETWORK=preview
 ARG NEXT_PUBLIC_BLOCKFROST_API_KEY
 ARG NEXT_PUBLIC_BLOCKFROST_URL
+ARG NEXT_PUBLIC_BASE_URL
 
 # Set environment variables for build
 ENV NEXT_PUBLIC_NETWORK=${NEXT_PUBLIC_NETWORK}
 ENV NEXT_PUBLIC_BLOCKFROST_API_KEY=${NEXT_PUBLIC_BLOCKFROST_API_KEY}
 ENV NEXT_PUBLIC_BLOCKFROST_URL=${NEXT_PUBLIC_BLOCKFROST_URL}
+ENV NEXT_PUBLIC_BASE_URL=${NEXT_PUBLIC_BASE_URL}
 ENV NODE_ENV=production
 
 # Build the application
@@ -45,8 +50,8 @@ RUN npm ci --only=production
 
 # Copy necessary files from builder
 COPY --from=builder /app/next.config.js ./
-COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
