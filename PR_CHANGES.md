@@ -109,6 +109,7 @@ Run token discovery with: `./gradlew manualIntegrationTest --tests DiscoverToken
   - Structured JSON error responses with timestamp, status, error type, message, and path
   - Handlers for `ApiException`, `IllegalArgumentException`, validation errors, and generic exceptions
   - Consistent error format across all API endpoints
+  - Migrated `/register` endpoint (6 error handlers) to use `ApiException`
 
 #### 7. Add Request Validation with Bean Validation
 **Files:**
