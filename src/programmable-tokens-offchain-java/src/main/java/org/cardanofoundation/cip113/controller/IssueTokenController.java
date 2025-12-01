@@ -151,7 +151,7 @@ public class IssueTokenController {
 
             var issuanceMintOpt = protocolBootstrapService.getProtocolContract("issuance_mint.issuance_mint.mint");
             if (issuanceMintOpt.isEmpty()) {
-                return ResponseEntity.internalServerError().body("could not find issuance mint contract");
+                throw ApiException.internalError("Could not find issuance mint contract in blueprint");
             }
 
             var issuanceContract = PlutusBlueprintUtil.getPlutusScriptFromCompiledCode(AikenScriptUtil.applyParamToScript(issuanceParameters, issuanceMintOpt.get()), PlutusVersion.v3);
@@ -163,7 +163,7 @@ public class IssueTokenController {
 
             var directoryMintOpt = protocolBootstrapService.getProtocolContract("registry_mint.registry_mint.mint");
             if (directoryMintOpt.isEmpty()) {
-                return ResponseEntity.internalServerError().body("could not find directory mint contract");
+                throw ApiException.internalError("Could not find directory mint contract in blueprint");
             }
 
             // Directory MINT parameterization
@@ -181,7 +181,7 @@ public class IssueTokenController {
 
             var directorySpentOpt = protocolBootstrapService.getProtocolContract("registry_spend.registry_spend.spend");
             if (directorySpentOpt.isEmpty()) {
-                return ResponseEntity.internalServerError().body("could not find directory spend contract");
+                throw ApiException.internalError("Could not find directory spend contract in blueprint");
             }
 
             // Directory SPEND parameterization
@@ -302,7 +302,8 @@ public class IssueTokenController {
             return ResponseEntity.ok(transaction.serializeToHex());
 
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(e.getMessage());
+            log.error("Failed to register token: {}", e.getMessage(), e);
+            throw ApiException.internalError("Failed to register token: " + e.getMessage(), e);
         }
     }
 
@@ -320,7 +321,7 @@ public class IssueTokenController {
                     .outputIndex(protocolParamsUtxoRef.outputIndex())
                     .build());
             if (protocolParamsUtxoOpt.isEmpty()) {
-                return ResponseEntity.internalServerError().body("could not resolve protocol params");
+                throw ApiException.internalError("Could not resolve protocol params UTxO");
             }
 
             var protocolParamsUtxo = protocolParamsUtxoOpt.get();
@@ -332,7 +333,7 @@ public class IssueTokenController {
                     .outputIndex(issuanceUtxoRef.outputIndex())
                     .build());
             if (issuanceUtxoOpt.isEmpty()) {
-                return ResponseEntity.internalServerError().body("could not resolve issuance params");
+                throw ApiException.internalError("Could not resolve issuance UTxO");
             }
             var issuanceUtxo = issuanceUtxoOpt.get();
             log.info("issuanceUtxo: {}", issuanceUtxo);
@@ -346,7 +347,7 @@ public class IssueTokenController {
 
             var issuerUtxosOpt = utxoRepository.findUnspentByOwnerAddr(mintTokenRequest.issuerBaseAddress(), Pageable.unpaged());
             if (issuerUtxosOpt.isEmpty()) {
-                return ResponseEntity.badRequest().body("issuer wallet is empty");
+                throw ApiException.badRequest("Issuer wallet is empty");
             }
             var issuerUtxos = issuerUtxosOpt.get().stream().map(UtxoUtil::toUtxo).toList();
 
@@ -370,7 +371,7 @@ public class IssueTokenController {
 
             var issuanceMintOpt = protocolBootstrapService.getProtocolContract("issuance_mint.issuance_mint.mint");
             if (issuanceMintOpt.isEmpty()) {
-                return ResponseEntity.internalServerError().body("could not find issuance mint contract");
+                throw ApiException.internalError("Could not find issuance mint contract in blueprint");
             }
 
             var issuanceContract = PlutusBlueprintUtil.getPlutusScriptFromCompiledCode(AikenScriptUtil.applyParamToScript(issuanceParameters, issuanceMintOpt.get()), PlutusVersion.v3);
@@ -443,8 +444,8 @@ public class IssueTokenController {
             return ResponseEntity.ok(transaction.serializeToHex());
 
         } catch (Exception e) {
-            log.warn("Failed to mint token: {}", e.getMessage(), e);
-            return ResponseEntity.internalServerError().body(e.getMessage());
+            log.error("Failed to mint token: {}", e.getMessage(), e);
+            throw ApiException.internalError("Failed to mint token: " + e.getMessage(), e);
         }
     }
 
@@ -461,7 +462,7 @@ public class IssueTokenController {
                     .outputIndex(protocolParamsUtxoRef.outputIndex())
                     .build());
             if (protocolParamsUtxoOpt.isEmpty()) {
-                return ResponseEntity.internalServerError().body("could not resolve protocol params");
+                throw ApiException.internalError("Could not resolve protocol params UTxO");
             }
 
             var protocolParamsUtxo = protocolParamsUtxoOpt.get();
@@ -473,7 +474,7 @@ public class IssueTokenController {
                     .outputIndex(issuanceUtxoRef.outputIndex())
                     .build());
             if (issuanceUtxoOpt.isEmpty()) {
-                return ResponseEntity.internalServerError().body("could not resolve issuance params");
+                throw ApiException.internalError("Could not resolve issuance UTxO");
             }
             var issuanceUtxo = issuanceUtxoOpt.get();
             log.info("issuanceUtxo: {}", issuanceUtxo);
@@ -487,7 +488,7 @@ public class IssueTokenController {
 
             var issuerUtxosOpt = utxoRepository.findUnspentByOwnerAddr(issueTokenRequest.issuerBaseAddress(), Pageable.unpaged());
             if (issuerUtxosOpt.isEmpty()) {
-                return ResponseEntity.badRequest().body("issuer wallet is empty");
+                throw ApiException.badRequest("Issuer wallet is empty");
             }
             var issuerUtxos = issuerUtxosOpt.get().stream().map(UtxoUtil::toUtxo).toList();
 
@@ -497,7 +498,7 @@ public class IssueTokenController {
                     .outputIndex(directoryUtxoRef.outputIndex())
                     .build());
             if (directoryUtxoOpt.isEmpty()) {
-                return ResponseEntity.internalServerError().body("could not resolve directories");
+                throw ApiException.internalError("Could not resolve directory UTxO");
             }
 
             var directoryUtxo = UtxoUtil.toUtxo(directoryUtxoOpt.get());
@@ -506,7 +507,7 @@ public class IssueTokenController {
             var directorySetNode = DirectorySetNode.fromInlineDatum(directoryUtxo.getInlineDatum());
             if (directorySetNode.isEmpty()) {
                 log.error("could not deserialise directorySetNode for utxo: {}", directoryUtxo);
-                return ResponseEntity.internalServerError().body("could not deserialise directorySetNode");
+                throw ApiException.internalError("Could not deserialize directory set node");
             }
             log.info("directorySetNode: {}", directorySetNode);
 
@@ -515,7 +516,7 @@ public class IssueTokenController {
 
             if (substandardIssuanceContractOpt.isEmpty() || substandardTransferContractOpt.isEmpty()) {
                 log.warn("substandard issuance or transfer contract are empty");
-                return ResponseEntity.badRequest().body("substandard issuance or transfer contract are empty");
+                throw ApiException.badRequest("Substandard issuance or transfer contract not found");
             }
 
             var substandardIssueContract = PlutusBlueprintUtil.getPlutusScriptFromCompiledCode(substandardIssuanceContractOpt.get().scriptBytes(), PlutusVersion.v3);
@@ -538,7 +539,7 @@ public class IssueTokenController {
 
             var issuanceMintOpt = protocolBootstrapService.getProtocolContract("issuance_mint.issuance_mint.mint");
             if (issuanceMintOpt.isEmpty()) {
-                return ResponseEntity.internalServerError().body("could not find issuance mint contract");
+                throw ApiException.internalError("Could not find issuance mint contract in blueprint");
             }
 
             var issuanceContract = PlutusBlueprintUtil.getPlutusScriptFromCompiledCode(AikenScriptUtil.applyParamToScript(issuanceParameters, issuanceMintOpt.get()), PlutusVersion.v3);
@@ -550,7 +551,7 @@ public class IssueTokenController {
 
             var directoryMintOpt = protocolBootstrapService.getProtocolContract("registry_mint.registry_mint.mint");
             if (directoryMintOpt.isEmpty()) {
-                return ResponseEntity.internalServerError().body("could not find directory mint contract");
+                throw ApiException.internalError("Could not find directory mint contract in blueprint");
             }
 
             // Directory MINT parameterization
@@ -568,7 +569,7 @@ public class IssueTokenController {
 
             var directorySpentOpt = protocolBootstrapService.getProtocolContract("registry_spend.registry_spend.spend");
             if (directorySpentOpt.isEmpty()) {
-                return ResponseEntity.internalServerError().body("could not find directory spend contract");
+                throw ApiException.internalError("Could not find directory spend contract in blueprint");
             }
 
             // Directory SPEND parameterization
@@ -715,7 +716,8 @@ public class IssueTokenController {
             return ResponseEntity.ok(transaction.serializeToHex());
 
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(e.getMessage());
+            log.error("Failed to issue token: {}", e.getMessage(), e);
+            throw ApiException.internalError("Failed to issue token: " + e.getMessage(), e);
         }
     }
 
