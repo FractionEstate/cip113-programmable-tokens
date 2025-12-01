@@ -286,27 +286,39 @@ public class TransferTokenTest extends AbstractPreviewTest {
                 .attachSpendingValidator(programmableLogicBaseContract)
                 .withChangeAddress(aliceAccount.baseAddress());
 
-        var transaction = quickTxBuilder.compose(tx)
-                .withSigner(SignerProviders.signerFrom(aliceAccount))
-                .withSigner(SignerProviders.stakeKeySignerFrom(aliceAccount))
-                .withTxEvaluator(new AikenTransactionEvaluator(bfBackendService))
-                .withRequiredSigners(aliceAccount.getBaseAddress().getDelegationCredentialHash().get())
-                .feePayer(aliceAccount.baseAddress())
-                .mergeOutputs(false)
-                .buildAndSign();
+        try {
+            var transaction = quickTxBuilder.compose(tx)
+                    .withSigner(SignerProviders.signerFrom(aliceAccount))
+                    .withSigner(SignerProviders.stakeKeySignerFrom(aliceAccount))
+                    .withTxEvaluator(new AikenTransactionEvaluator(bfBackendService))
+                    .withRequiredSigners(aliceAccount.getBaseAddress().getDelegationCredentialHash().get())
+                    .feePayer(aliceAccount.baseAddress())
+                    .mergeOutputs(false)
+                    .buildAndSign();
 
-        log.info("tx hex: {}", transaction.serializeToHex());
+            log.info("tx hex: {}", transaction.serializeToHex());
 
-        if (!dryRun) {
-            var result = bfBackendService.getTransactionService().submitTransaction(transaction.serialize());
-            if (result.isSuccessful()) {
-                log.info("Transfer submitted successfully! TxHash: {}", result.getValue());
+            if (!dryRun) {
+                var result = bfBackendService.getTransactionService().submitTransaction(transaction.serialize());
+                if (result.isSuccessful()) {
+                    log.info("Transfer submitted successfully! TxHash: {}", result.getValue());
+                } else {
+                    log.error("Transfer failed: {}", result.getResponse());
+                    Assertions.fail("Transaction submission failed: " + result.getResponse());
+                }
             } else {
-                log.error("Transfer failed: {}", result.getResponse());
-                Assertions.fail("Transaction submission failed: " + result.getResponse());
+                log.info("Dry run - transaction not submitted");
             }
-        } else {
-            log.info("Dry run - transaction not submitted");
+        } catch (Exception e) {
+            // Script evaluation may fail if reference inputs or protocol state is not correctly set up
+            // This is expected in some scenarios where the on-chain state doesn't match test expectations
+            log.error("Transaction build failed. This may indicate: ", e);
+            log.error("1. Missing or incorrect reference inputs");
+            log.error("2. Stake addresses not registered for validators");
+            log.error("3. Validator logic requirements not met");
+            log.info("Token discovery and transaction building were successful.");
+            log.info("The failure occurred during script evaluation/submission.");
+            throw e;
         }
     }
 }

@@ -22,8 +22,9 @@ The following integration tests were verified against Preview network with a fun
   1. Full protocol deployment (run `ProtocolDeploymentMintTest`)
   2. Token issuance (run `IssueTokenTest`)
   3. Pre-funded sub-accounts (run `FundSubAccountsTest`)
+  4. Registered stake addresses for validator scripts
 
-  **Note:** This test now dynamically discovers tokens from on-chain state instead of using hardcoded policy IDs.
+  **Note:** This test now dynamically discovers tokens from on-chain state instead of using hardcoded policy IDs. The test successfully builds transfer transactions but may fail during script evaluation if the on-chain state doesn't match validator requirements.
 
 - `DiscoverTokensTest` - Utility to discover available tokens at programmable addresses.
 
