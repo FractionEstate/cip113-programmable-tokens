@@ -3,6 +3,7 @@ package org.cardanofoundation.cip113.exception;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
@@ -10,6 +11,7 @@ import org.springframework.web.context.request.WebRequest;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Global exception handler for REST API endpoints.
@@ -18,6 +20,19 @@ import java.util.Map;
 @ControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
+
+    /**
+     * Handle validation errors from @Valid annotations.
+     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleValidationException(
+            MethodArgumentNotValidException ex, WebRequest request) {
+        String errors = ex.getBindingResult().getFieldErrors().stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .collect(Collectors.joining("; "));
+        log.warn("Validation failed: {}", errors);
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, errors, request);
+    }
 
     /**
      * Handle ApiException - custom API errors with specific HTTP status.

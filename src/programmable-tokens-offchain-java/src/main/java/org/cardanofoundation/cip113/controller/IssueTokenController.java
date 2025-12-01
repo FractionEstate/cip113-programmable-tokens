@@ -32,6 +32,7 @@ import org.cardanofoundation.cip113.service.ProtocolBootstrapService;
 import org.cardanofoundation.cip113.service.SubstandardService;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -60,7 +61,7 @@ public class IssueTokenController {
     private final QuickTxBuilder quickTxBuilder;
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody RegisterTokenRequest registerTokenRequest) {
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterTokenRequest registerTokenRequest) {
 
         try {
 
@@ -306,7 +307,7 @@ public class IssueTokenController {
 
 
     @PostMapping("/mint")
-    public ResponseEntity<?> mint(@RequestBody MintTokenRequest mintTokenRequest) {
+    public ResponseEntity<?> mint(@Valid @RequestBody MintTokenRequest mintTokenRequest) {
 
         try {
 
@@ -447,7 +448,7 @@ public class IssueTokenController {
     }
 
     @PostMapping("/issue")
-    public ResponseEntity<?> issueToken(@RequestBody IssueTokenRequest issueTokenRequest) {
+    public ResponseEntity<?> issueToken(@Valid @RequestBody IssueTokenRequest issueTokenRequest) {
 
         try {
 

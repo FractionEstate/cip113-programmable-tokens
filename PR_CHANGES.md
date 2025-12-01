@@ -107,42 +107,59 @@ Run token discovery with: `./gradlew manualIntegrationTest --tests DiscoverToken
 - **Fix:** Added `@ControllerAdvice` global exception handler with:
   - Custom `ApiException` class with HTTP status codes and static factory methods
   - Structured JSON error responses with timestamp, status, error type, message, and path
-  - Handlers for `ApiException`, `IllegalArgumentException`, and generic exceptions
+  - Handlers for `ApiException`, `IllegalArgumentException`, validation errors, and generic exceptions
   - Consistent error format across all API endpoints
+
+#### 7. Add Request Validation with Bean Validation
+**Files:**
+- `src/programmable-tokens-offchain-java/build.gradle` - Added `spring-boot-starter-validation` dependency
+- `src/programmable-tokens-offchain-java/src/main/java/org/cardanofoundation/cip113/model/MintTokenRequest.java`
+- `src/programmable-tokens-offchain-java/src/main/java/org/cardanofoundation/cip113/model/RegisterTokenRequest.java`
+- `src/programmable-tokens-offchain-java/src/main/java/org/cardanofoundation/cip113/model/IssueTokenRequest.java`
+- `src/programmable-tokens-offchain-java/src/main/java/org/cardanofoundation/cip113/controller/IssueTokenController.java`
+
+- **Issue:** No input validation on API request DTOs, allowing invalid data to reach business logic.
+- **Fix:** Added Jakarta Bean Validation annotations to request records:
+  - `@NotBlank` for required string fields
+  - `@Pattern` for bech32 address format validation (mainnet and testnet)
+  - `@Pattern` for hex-encoded asset names (1-64 characters)
+  - `@Pattern` for positive integer quantity validation
+  - Added `@Valid` to controller method parameters
+  - GlobalExceptionHandler returns structured validation error messages
 
 ### Test Suite Fixes
 
-#### 7. Fix `ProtocolParamsParserTest`
+#### 8. Fix `ProtocolParamsParserTest`
 **File:** `src/programmable-tokens-offchain-java/src/test/java/org/cardanofoundation/cip113/model/onchain/ProtocolParamsParserTest.java`
 
 - **Issue:** `testOk2` had incorrect expected values (copy-paste error from `testOk1`).
 - **Fix:** Updated expected values to match the actual parsed CBOR data.
 
-#### 8. Fix `BalanceValueHelperTest`
+#### 9. Fix `BalanceValueHelperTest`
 **File:** `src/programmable-tokens-offchain-java/src/test/java/org/cardanofoundation/cip113/util/BalanceValueHelperTest.java`
 
 - **Issue:** Tests used invalid policy IDs like `"policyId1"` instead of proper 56-character hex strings.
 - **Fix:** Added valid test constants `TEST_POLICY_ID` (56-char hex) and `TEST_ASSET_NAME` (8-char hex), updated all test methods.
 
-#### 9. Fix `AddressUtilTest`
+#### 10. Fix `AddressUtilTest`
 **File:** `src/programmable-tokens-offchain-java/src/test/java/org/cardanofoundation/cip113/util/AddressUtilTest.java`
 
 - **Issue:** Tests used placeholder addresses (`"addr1q9xyz..."`) that couldn't be decoded as real Cardano addresses.
 - **Fix:** Updated tests to use real bech32 testnet addresses for proper address decomposition testing.
 
-#### 10. Fix `RegistryNodeEntity` for H2 Database
+#### 11. Fix `RegistryNodeEntity` for H2 Database
 **File:** `src/programmable-tokens-offchain-java/src/main/java/org/cardanofoundation/cip113/entity/RegistryNodeEntity.java`
 
 - **Issue:** The column name `key` is a SQL reserved word, causing H2 database failures in tests.
 - **Fix:** Added `@Column(name = "\"key\"")` annotation to quote the column name, also updated the index annotation.
 
-#### 11. Fix `BalanceServiceTest`
+#### 12. Fix `BalanceServiceTest`
 **File:** `src/programmable-tokens-offchain-java/src/test/java/org/cardanofoundation/cip113/service/BalanceServiceTest.java`
 
 - **Issue:** Same policy ID issue as BalanceValueHelperTest, plus overly strict assertions on asset names.
 - **Fix:** Added valid test constants, updated helper method `createBalanceWithAssets()`, relaxed assertions to not assume specific asset name formats.
 
-#### 12. Fix `RegistryNodeParserTest`
+#### 13. Fix `RegistryNodeParserTest`
 **File:** `src/programmable-tokens-offchain-java/src/test/java/org/cardanofoundation/cip113/model/onchain/RegistryNodeParserTest.java`
 
 - **Issue:** Tests used malformed CBOR test data that couldn't be parsed correctly.
@@ -152,7 +169,7 @@ Run token discovery with: `./gradlew manualIntegrationTest --tests DiscoverToken
   - Fixed the sentinel node CBOR which had incorrect byte lengths (50 f's instead of 54)
   - All 3 tests (testParseRegistryNode, testParseSentinelNode, testParseInvalidDatum) now pass
 
-#### 13. Fix Integration Tests with Graceful Skip
+#### 14. Fix Integration Tests with Graceful Skip
 **Files:**
 - `src/programmable-tokens-offchain-java/src/test/java/org/cardanofoundation/cip113/AbstractPreviewTest.java`
 - `src/programmable-tokens-offchain-java/src/test/java/org/cardanofoundation/cip113/PreviewConstants.java`
@@ -167,12 +184,12 @@ Run token discovery with: `./gradlew manualIntegrationTest --tests DiscoverToken
 
 ### Documentation Updates
 
-#### 14. Input Ordering Documentation
+#### 15. Input Ordering Documentation
 **File:** `src/programmable-tokens-onchain-aiken/validators/programmable_logic_global.ak`
 
 - Updated TODO comment to document how input ordering is implicitly validated through Aiken's lexicographic ordering and existing validation checks.
 
-#### 15. Test Fixture Documentation
+#### 16. Test Fixture Documentation
 **Files:** Multiple test files
 
 - Replaced misleading FIXME comments with accurate documentation explaining datum structure fields.
