@@ -74,17 +74,19 @@ Some areas could benefit from additional test coverage:
 
 ## Test Suite Status
 
-**Final Results:** 61 tests, 0 failures, 0 skipped
+**Final Results:** 62 tests, 0 failures, 0 skipped
 
 | Test Category | Count | Status |
 |---------------|-------|--------|
 | Unit Tests | 58 | ✅ Pass |
-| Integration Tests | 3 | ✅ Pass |
+| Integration Tests | 4 | ✅ Pass |
 
 ### Excluded from Default Run
 | Test | Reason | How to Run |
 |------|--------|------------|
-| `TransferTokenTest` | Requires pre-funded sub-accounts | `./gradlew manualIntegrationTest` |
+| `TransferTokenTest` | Requires pre-funded sub-accounts and token minting | `./gradlew manualIntegrationTest` |
+| `FundSubAccountsTest` | Manual setup utility | `./gradlew manualIntegrationTest --tests FundSubAccountsTest` |
+| `SetupProgrammableAddressesTest` | Manual setup utility | `./gradlew manualIntegrationTest --tests SetupProgrammableAddressesTest` |
 
 ---
 

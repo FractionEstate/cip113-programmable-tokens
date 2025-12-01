@@ -4,8 +4,8 @@
 This PR addresses critical issues across the entire codebase including frontend browser compatibility, backend type safety, comprehensive test suite fixes, and documentation improvements. All tests now pass with integration tests properly skipped when prerequisites are unavailable.
 
 ## Test Results Summary
-- **Total Tests:** 61
-- **Passing:** 61
+- **Total Tests:** 62
+- **Passing:** 62
 - **Skipped:** 0
 - **Failures:** 0
 - **Errors:** 0
@@ -18,7 +18,21 @@ The following integration tests were verified against Preview network with a fun
 - ✅ `ProtocolDeploymentMintTest` - Full protocol deployment
 
 ### Excluded from Default Run (Manual Setup Required)
-- `TransferTokenTest` - Excluded via `@Tag("manual-integration")`, requires pre-funded sub-accounts. Run with: `./gradlew manualIntegrationTest`
+- `TransferTokenTest` - Excluded via `@Tag("manual-integration")`. Requires:
+  1. Full protocol deployment (run `ProtocolDeploymentMintTest`)
+  2. Token issuance (run `IssueTokenTest`)
+  3. Pre-funded sub-accounts (run `FundSubAccountsTest`)
+
+  **Note:** This test has hardcoded token policy IDs from an older deployment. It needs to be updated to dynamically discover tokens from the current on-chain state.
+
+### Sub-Account Funding Utilities
+Utility tests for managing sub-accounts and programmable addresses:
+- `GenerateSubAccountsTest` - Displays all sub-account addresses for funding
+- `FundSubAccountsTest` - Transfers 50 tADA each to alice and bob from admin account
+- `SetupProgrammableAddressesTest` - Creates UTxOs at alice and bob's programmable token addresses
+
+Run funding with: `./gradlew manualIntegrationTest --tests FundSubAccountsTest`
+Run setup with: `./gradlew manualIntegrationTest --tests SetupProgrammableAddressesTest`
 
 ## Changes
 
@@ -133,7 +147,7 @@ The following integration tests were verified against Preview network with a fun
 - ✅ Frontend TypeScript: `npx tsc --noEmit` - No type errors
 - ✅ Frontend build: `npm run build` - Completes successfully
 - ✅ Backend compile: `./gradlew compileJava` - Completes successfully
-- ✅ **Full test suite: `./gradlew test` - BUILD SUCCESSFUL (61 tests, 0 failures, 0 skipped)**
+- ✅ **Full test suite: `./gradlew test` - BUILD SUCCESSFUL (62 tests, 0 failures, 0 skipped)**
 - ✅ Verified no `Buffer` usage remains in frontend source code
 - ✅ Integration tests verified on Preview network with funded wallet
 
