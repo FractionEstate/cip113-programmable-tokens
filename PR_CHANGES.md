@@ -17,6 +17,13 @@ This PR addresses critical issues across the entire codebase including frontend 
 - **MintTokenRequestValidationTest** - 36 parameterized tests for Bean Validation
 - **GlobalExceptionHandlerTest** - 9 tests for exception handling consistency
 
+### Javadoc Documentation Added
+Added comprehensive Javadoc to key classes:
+- **ApiException** - Factory method documentation with @param/@return tags
+- **GlobalExceptionHandler** - Exception handler method documentation
+- **AddressUtil** - Class, method, and inner class documentation
+- **AbstractContract** - Constructor and address method documentation
+
 ### Integration Tests Verified
 The following integration tests were verified against Preview network with a funded test wallet:
 - ✅ `ProtocolParamsMintTest` - Mints protocol params NFT

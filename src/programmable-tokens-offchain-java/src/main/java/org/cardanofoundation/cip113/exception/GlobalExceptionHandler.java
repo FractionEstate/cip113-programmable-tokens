@@ -23,6 +23,10 @@ public class GlobalExceptionHandler {
 
     /**
      * Handle validation errors from @Valid annotations.
+     *
+     * @param ex      the MethodArgumentNotValidException
+     * @param request the web request
+     * @return 400 Bad Request with validation error details
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidationException(
@@ -36,6 +40,10 @@ public class GlobalExceptionHandler {
 
     /**
      * Handle ApiException - custom API errors with specific HTTP status.
+     *
+     * @param ex      the ApiException
+     * @param request the web request
+     * @return error response with the exception's status and message
      */
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<Map<String, Object>> handleApiException(
@@ -46,6 +54,10 @@ public class GlobalExceptionHandler {
 
     /**
      * Handle IllegalArgumentException - typically for bad request parameters.
+     *
+     * @param ex      the IllegalArgumentException
+     * @param request the web request
+     * @return 400 Bad Request error response
      */
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalArgumentException(
@@ -56,6 +68,10 @@ public class GlobalExceptionHandler {
 
     /**
      * Handle IllegalStateException - typically for invalid application state.
+     *
+     * @param ex      the IllegalStateException
+     * @param request the web request
+     * @return 409 Conflict error response
      */
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalStateException(
@@ -66,6 +82,10 @@ public class GlobalExceptionHandler {
 
     /**
      * Handle RuntimeException - catch-all for unexpected errors.
+     *
+     * @param ex      the RuntimeException
+     * @param request the web request
+     * @return 500 Internal Server Error response
      */
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, Object>> handleRuntimeException(
@@ -80,6 +100,10 @@ public class GlobalExceptionHandler {
 
     /**
      * Handle all other exceptions.
+     *
+     * @param ex      the Exception
+     * @param request the web request
+     * @return 500 Internal Server Error response
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleAllExceptions(
@@ -94,6 +118,11 @@ public class GlobalExceptionHandler {
 
     /**
      * Build a consistent error response body.
+     *
+     * @param status  the HTTP status
+     * @param message the error message
+     * @param request the web request
+     * @return ResponseEntity with error details map
      */
     private ResponseEntity<Map<String, Object>> buildErrorResponse(
             HttpStatus status, String message, WebRequest request) {
