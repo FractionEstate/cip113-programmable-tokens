@@ -26,14 +26,35 @@ import org.cardanofoundation.cip113.model.blueprint.Plutus;
 import org.cardanofoundation.cip113.model.bootstrap.ProtocolBootstrapParams;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigInteger;
 import java.util.List;
 
+/**
+ * Integration test for transferring programmable tokens.
+ * <p>
+ * This test requires a fully deployed protocol with:
+ * <ul>
+ *   <li>Protocol params NFT minted and deployed</li>
+ *   <li>Registry/directory with registered token entries</li>
+ *   <li>Pre-minted programmable tokens in alice's script address</li>
+ *   <li>Funded sub-accounts (alice, bob) with UTxOs</li>
+ * </ul>
+ * <p>
+ * To run this test:
+ * <pre>
+ * ./gradlew manualIntegrationTest
+ * </pre>
+ * <p>
+ * Prerequisites:
+ * 1. Deploy the protocol using ProtocolDeploymentMintTest
+ * 2. Issue tokens using IssueTokenTest
+ * 3. Fund alice and bob accounts from the admin wallet
+ */
 @Slf4j
-@Disabled("Integration test - requires Blockfrost API key and Preview network access")
+@Tag("manual-integration")
 public class TransferTokenTest extends AbstractPreviewTest {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -79,9 +100,9 @@ public class TransferTokenTest extends AbstractPreviewTest {
         log.info("protocolParamsUtxo: {}", protocolParamsUtxo);
 
         var utxosOpt = bfBackendService.getUtxoService().getUtxos(aliceAccount.baseAddress(), 100, 1);
-        if (!utxosOpt.isSuccessful() || utxosOpt.getValue().isEmpty()) {
-            Assertions.fail("no utxos available");
-        }
+        Assertions.assertTrue(utxosOpt.isSuccessful() && !utxosOpt.getValue().isEmpty(),
+                "aliceAccount has no UTxOs. This test requires pre-funded sub-accounts. " +
+                "Fund alice's address: " + aliceAccount.baseAddress());
         var walletUtxos = utxosOpt.getValue();
 
         var substandardIssueContract = PlutusBlueprintUtil.getPlutusScriptFromCompiledCode(SUBSTANDARD_ISSUE_CONTRACT, PlutusVersion.v3);

@@ -56,5 +56,17 @@ dependencies {
 }
 
 tasks.named('test') {
-	useJUnitPlatform()
+	useJUnitPlatform {
+		// Exclude tests tagged as requiring manual setup
+		excludeTags 'manual-integration'
+	}
+}
+
+// Task to run manual integration tests (requires protocol setup)
+tasks.register('manualIntegrationTest', Test) {
+	useJUnitPlatform {
+		includeTags 'manual-integration'
+	}
+	description = 'Runs manual integration tests that require protocol deployment'
+	group = 'verification'
 }

@@ -30,10 +30,7 @@ import org.junit.jupiter.api.Test;
 import java.math.BigInteger;
 import java.util.List;
 
-import org.junit.jupiter.api.Disabled;
-
 @Slf4j
-@Disabled("Integration test - requires Blockfrost API key and Preview network access")
 public class IssueTokenTest extends AbstractPreviewTest {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
