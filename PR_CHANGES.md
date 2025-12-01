@@ -4,8 +4,8 @@
 This PR addresses critical issues across the entire codebase including frontend browser compatibility, backend type safety, comprehensive test suite fixes, and documentation improvements. All tests now pass with integration tests properly skipped when prerequisites are unavailable.
 
 ## Test Results Summary
-- **Total Tests:** 121
-- **Passing:** 121
+- **Total Tests:** 130
+- **Passing:** 130
 - **Skipped:** 0
 - **Failures:** 0
 - **Errors:** 0
@@ -14,6 +14,7 @@ This PR addresses critical issues across the entire codebase including frontend 
 - **HealthcheckControllerTest** - 5 tests for `/healthcheck` endpoints using standalone MockMvc
 - **SubstandardControllerTest** - 5 tests for `/api/v1/substandards` endpoints
 - **ProtocolControllerTest** - 4 tests for `/api/v1/protocol` endpoints
+- **BalanceControllerTest** - 9 tests for `/api/v1/balances` endpoints
 - **MintTokenRequestValidationTest** - 36 parameterized tests for Bean Validation
 - **GlobalExceptionHandlerTest** - 9 tests for exception handling consistency
 
