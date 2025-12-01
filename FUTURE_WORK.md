@@ -81,12 +81,14 @@ Some areas could benefit from additional test coverage:
 | Unit Tests | 58 | ✅ Pass |
 | Integration Tests | 4 | ✅ Pass |
 
-### Excluded from Default Run
-| Test | Reason | How to Run |
-|------|--------|------------|
-| `TransferTokenTest` | Requires pre-funded sub-accounts and token minting | `./gradlew manualIntegrationTest` |
-| `FundSubAccountsTest` | Manual setup utility | `./gradlew manualIntegrationTest --tests FundSubAccountsTest` |
-| `SetupProgrammableAddressesTest` | Manual setup utility | `./gradlew manualIntegrationTest --tests SetupProgrammableAddressesTest` |
+### Excluded from Default Run (Manual Integration Tests)
+| Test | Purpose | How to Run |
+|------|---------|------------|
+| `TransferTokenTest` | Transfer programmable tokens between accounts | `./gradlew manualIntegrationTest --tests TransferTokenTest` |
+| `FundSubAccountsTest` | Transfer ADA to alice/bob accounts | `./gradlew manualIntegrationTest --tests FundSubAccountsTest` |
+| `SetupProgrammableAddressesTest` | Create UTxOs at programmable addresses | `./gradlew manualIntegrationTest --tests SetupProgrammableAddressesTest` |
+| `GenerateSubAccountsTest` | Display all sub-account addresses | `./gradlew manualIntegrationTest --tests GenerateSubAccountsTest` |
+| `DiscoverTokensTest` | Discover tokens at programmable addresses | `./gradlew manualIntegrationTest --tests DiscoverTokensTest` |
 
 ---
 
