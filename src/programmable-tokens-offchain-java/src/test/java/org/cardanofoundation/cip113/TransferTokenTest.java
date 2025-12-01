@@ -5,6 +5,7 @@ import com.bloxbean.cardano.aiken.AikenTransactionEvaluator;
 import com.bloxbean.cardano.client.address.AddressProvider;
 import com.bloxbean.cardano.client.address.Credential;
 import com.bloxbean.cardano.client.api.model.Amount;
+import com.bloxbean.cardano.client.api.model.Utxo;
 import com.bloxbean.cardano.client.api.util.ValueUtil;
 import com.bloxbean.cardano.client.function.helper.SignerProviders;
 import com.bloxbean.cardano.client.plutus.blueprint.PlutusBlueprintUtil;
@@ -19,7 +20,6 @@ import com.bloxbean.cardano.client.transaction.spec.MultiAsset;
 import com.bloxbean.cardano.client.transaction.spec.TransactionInput;
 import com.bloxbean.cardano.client.transaction.spec.Value;
 import com.bloxbean.cardano.client.util.HexUtil;
-import com.easy1staking.cardano.model.AssetType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.cardanofoundation.cip113.model.blueprint.Plutus;
@@ -31,27 +31,26 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Integration test for transferring programmable tokens.
  * <p>
- * This test requires a fully deployed protocol with:
- * <ul>
- *   <li>Protocol params NFT minted and deployed</li>
- *   <li>Registry/directory with registered token entries</li>
- *   <li>Pre-minted programmable tokens in alice's script address</li>
- *   <li>Funded sub-accounts (alice, bob) with UTxOs</li>
- * </ul>
- * <p>
- * To run this test:
- * <pre>
- * ./gradlew manualIntegrationTest
- * </pre>
+ * This test dynamically discovers programmable tokens at alice's script address
+ * and transfers half to bob's script address.
  * <p>
  * Prerequisites:
- * 1. Deploy the protocol using ProtocolDeploymentMintTest
- * 2. Issue tokens using IssueTokenTest
- * 3. Fund alice and bob accounts from the admin wallet
+ * <ul>
+ *   <li>Protocol deployed (ProtocolDeploymentMintTest)</li>
+ *   <li>Token issued to alice's programmable address (IssueTokenTest)</li>
+ *   <li>Funded sub-accounts - alice and bob (FundSubAccountsTest)</li>
+ *   <li>Programmable addresses funded (SetupProgrammableAddressesTest)</li>
+ * </ul>
+ * <p>
+ * To run:
+ * <pre>
+ * ./gradlew manualIntegrationTest --tests "org.cardanofoundation.cip113.TransferTokenTest"
+ * </pre>
  */
 @Slf4j
 @Tag("manual-integration")
@@ -77,33 +76,101 @@ public class TransferTokenTest extends AbstractPreviewTest {
         PROGRAMMABLE_LOGIC_GLOBAL_CONTRACT = getCompiledCodeFor("programmable_logic_global.programmable_logic_global.withdraw", validators);
     }
 
+    /**
+     * Data class to hold discovered token information.
+     */
+    private record TokenInfo(String policyId, String assetNameHex, String assetName, BigInteger quantity, String unit) {}
+
+    /**
+     * Discovers the first programmable token at the given address.
+     */
+    private Optional<TokenInfo> discoverFirstToken(List<Utxo> utxos) {
+        for (var utxo : utxos) {
+            for (var amount : utxo.getAmount()) {
+                if (!"lovelace".equals(amount.getUnit()) && amount.getUnit().length() >= 56) {
+                    String policyId = amount.getUnit().substring(0, 56);
+                    String assetNameHex = amount.getUnit().substring(56);
+                    String assetName = hexToString(assetNameHex);
+                    return Optional.of(new TokenInfo(policyId, assetNameHex, assetName, amount.getQuantity(), amount.getUnit()));
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
+    private String hexToString(String hex) {
+        if (hex == null || hex.isEmpty()) return "";
+        try {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < hex.length(); i += 2) {
+                sb.append((char) Integer.parseInt(hex.substring(i, i + 2), 16));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return hex;
+        }
+    }
+
     @Test
     public void test() throws Exception {
 
         var dryRun = false;
 
-        var bootstrapTxHash = protocolBootstrapParams.txHash();
-
-        var progToken = AssetType.fromUnit("0befd1269cf3b5b41cce136c92c64b45dde93e4bfe11875839b713d150494e54");
-        var directoryNftUnit = "430eee9d0a6a57bd6552133a60bc2a8fe81e9e915ccb2392d7129bc60befd1269cf3b5b41cce136c92c64b45dde93e4bfe11875839b713d1";
-
-        // Protocol Params 2592ff5b2810679c30996c309080a3635071f923b43edb494a87597c1e6a5be5:0
-        // Directory 2592ff5b2810679c30996c309080a3635071f923b43edb494a87597c1e6a5be5:1
-        // Issuance 2592ff5b2810679c30996c309080a3635071f923b43edb494a87597c1e6a5be5:2
-
-
-        var protocolParamsUtxoOpt = bfBackendService.getUtxoService().getTxOutput(bootstrapTxHash, 0);
+        // Protocol Params and Directory UTxOs
+        var protocolParamsUtxoOpt = bfBackendService.getUtxoService().getTxOutput(
+                protocolBootstrapParams.protocolParamsUtxo().txHash(),
+                protocolBootstrapParams.protocolParamsUtxo().outputIndex());
         if (!protocolParamsUtxoOpt.isSuccessful()) {
-            Assertions.fail("could not fetch protocol params utxo");
+            Assertions.fail("Could not fetch protocol params UTxO. Has the protocol been deployed?");
         }
         var protocolParamsUtxo = protocolParamsUtxoOpt.getValue();
         log.info("protocolParamsUtxo: {}", protocolParamsUtxo);
 
-        var utxosOpt = bfBackendService.getUtxoService().getUtxos(aliceAccount.baseAddress(), 100, 1);
-        Assertions.assertTrue(utxosOpt.isSuccessful() && !utxosOpt.getValue().isEmpty(),
-                "aliceAccount has no UTxOs. This test requires pre-funded sub-accounts. " +
-                "Fund alice's address: " + aliceAccount.baseAddress());
-        var walletUtxos = utxosOpt.getValue();
+        // Build addresses
+        var programmableBaseScriptHash = protocolBootstrapParams.programmableLogicBaseParams().scriptHash();
+
+        var aliceAddress = AddressProvider.getBaseAddress(
+                Credential.fromScript(programmableBaseScriptHash),
+                aliceAccount.getBaseAddress().getDelegationCredential().get(),
+                network);
+        log.info("aliceAddress (programmable): {}", aliceAddress);
+
+        var bobAddress = AddressProvider.getBaseAddress(
+                Credential.fromScript(programmableBaseScriptHash),
+                bobAccount.getBaseAddress().getDelegationCredential().get(),
+                network);
+        log.info("bobAddress (programmable): {}", bobAddress);
+
+        // Get alice's wallet UTxOs for fee payment
+        var walletUtxosOpt = bfBackendService.getUtxoService().getUtxos(aliceAccount.baseAddress(), 100, 1);
+        Assertions.assertTrue(walletUtxosOpt.isSuccessful() && !walletUtxosOpt.getValue().isEmpty(),
+                "Alice's wallet has no UTxOs. Run FundSubAccountsTest first. Address: " + aliceAccount.baseAddress());
+        var walletUtxos = walletUtxosOpt.getValue();
+
+        // Discover tokens at alice's programmable address
+        var progBaseAddressUtxosOpt = bfBackendService.getUtxoService().getUtxos(aliceAddress.getAddress(), 100, 1);
+        Assertions.assertTrue(progBaseAddressUtxosOpt.isSuccessful() && !progBaseAddressUtxosOpt.getValue().isEmpty(),
+                "No UTxOs at alice's programmable address: " + aliceAddress.getAddress());
+        var progBaseAddressUtxos = progBaseAddressUtxosOpt.getValue();
+
+        // Find a programmable token
+        var tokenInfoOpt = discoverFirstToken(progBaseAddressUtxos);
+        Assertions.assertTrue(tokenInfoOpt.isPresent(),
+                "No programmable tokens found at alice's address. Run IssueTokenTest first.");
+        var tokenInfo = tokenInfoOpt.get();
+        log.info("Discovered token: {} ({}) with quantity {}", tokenInfo.unit(), tokenInfo.assetName(), tokenInfo.quantity());
+
+        // Find the UTxO containing the token
+        var progTokenUtxoOpt = progBaseAddressUtxos.stream()
+                .filter(utxo -> utxo.getAmount().stream().anyMatch(a -> tokenInfo.unit().equals(a.getUnit())))
+                .findAny();
+        Assertions.assertTrue(progTokenUtxoOpt.isPresent(), "Could not find UTxO with token: " + tokenInfo.unit());
+        var progTokenUtxo = progTokenUtxoOpt.get();
+        log.info("Token UTxO: {}#{}", progTokenUtxo.getTxHash(), progTokenUtxo.getOutputIndex());
+
+        // Build the directory NFT unit from the discovered token
+        var directoryNftUnit = protocolBootstrapParams.directoryMintParams().scriptHash() + tokenInfo.policyId();
+        log.info("Directory NFT unit: {}", directoryNftUnit);
 
         var substandardIssueContract = PlutusBlueprintUtil.getPlutusScriptFromCompiledCode(SUBSTANDARD_ISSUE_CONTRACT, PlutusVersion.v3);
         log.info("substandardIssueContract: {}", substandardIssueContract.getPolicyId());
@@ -115,29 +182,17 @@ public class TransferTokenTest extends AbstractPreviewTest {
         var substandardTransferAddress = AddressProvider.getRewardAddress(substandardTransferContract, network);
         log.info("substandardTransferAddress: {}", substandardTransferAddress.getAddress());
 
-
         // Programmable Logic Global parameterization
         var programmableLogicGlobalParameters = ListPlutusData.of(BytesPlutusData.of(HexUtil.decodeHexString(protocolBootstrapParams.protocolParams().scriptHash())));
         var programmableLogicGlobalContract = PlutusBlueprintUtil.getPlutusScriptFromCompiledCode(AikenScriptUtil.applyParamToScript(programmableLogicGlobalParameters, PROGRAMMABLE_LOGIC_GLOBAL_CONTRACT), PlutusVersion.v3);
         log.info("programmableLogicGlobalContract policy: {}", programmableLogicGlobalContract.getPolicyId());
         var programmableLogicGlobalAddress = AddressProvider.getRewardAddress(programmableLogicGlobalContract, network);
         log.info("programmableLogicGlobalAddress policy: {}", programmableLogicGlobalAddress.getAddress());
-//
-//        var registerAddressTx = new Tx()
-//                .from(adminAccount.baseAddress())
-//                .registerStakeAddress(programmableLogicGlobalAddress.getAddress())
-//                .withChangeAddress(adminAccount.baseAddress());
-//
-//        quickTxBuilder.compose(registerAddressTx)
-//                .feePayer(adminAccount.baseAddress())
-//                .withSigner(SignerProviders.signerFrom(adminAccount))
-//                .completeAndWait();
 
         // Programmable Logic Base parameterization
         var programmableLogicBaseParameters = ListPlutusData.of(ConstrPlutusData.of(1, BytesPlutusData.of(programmableLogicGlobalContract.getScriptHash())));
         var programmableLogicBaseContract = PlutusBlueprintUtil.getPlutusScriptFromCompiledCode(AikenScriptUtil.applyParamToScript(programmableLogicBaseParameters, PROGRAMMABLE_LOGIC_BASE_CONTRACT), PlutusVersion.v3);
         log.info("programmableLogicBaseContract policy: {}", programmableLogicBaseContract.getPolicyId());
-
 
         // Directory SPEND parameterization
         var directorySpendParameters = ListPlutusData.of(
@@ -146,66 +201,42 @@ public class TransferTokenTest extends AbstractPreviewTest {
         var directorySpendContract = PlutusBlueprintUtil.getPlutusScriptFromCompiledCode(AikenScriptUtil.applyParamToScript(directorySpendParameters, DIRECTORY_SPEND_CONTRACT), PlutusVersion.v3);
         var directorySpendContractAddress = AddressProvider.getEntAddress(Credential.fromScript(directorySpendContract.getScriptHash()), network);
 
-
         var directoryUtxosOpt = bfBackendService.getUtxoService().getUtxos(directorySpendContractAddress.getAddress(), 100, 1);
-        if (!directoryUtxosOpt.isSuccessful()) {
-            Assertions.fail("no directories");
-        }
+        Assertions.assertTrue(directoryUtxosOpt.isSuccessful() && !directoryUtxosOpt.getValue().isEmpty(),
+                "No directory UTxOs found. Has the token been registered?");
         var directoryUtxos = directoryUtxosOpt.getValue();
         directoryUtxos.forEach(utxo -> log.info("directory utxo: {}", utxo));
 
-        var directoryUtxoOpt = directoryUtxos.stream().filter(utxo -> utxo.getAmount().stream().anyMatch(amount -> directoryNftUnit.equals(amount.getUnit()))).findAny();
-        if (directoryUtxoOpt.isEmpty()) {
-            Assertions.fail("no directory utxo for unit: " + directoryNftUnit);
-        }
+        var directoryUtxoOpt = directoryUtxos.stream()
+                .filter(utxo -> utxo.getAmount().stream().anyMatch(amount -> directoryNftUnit.equals(amount.getUnit())))
+                .findAny();
+        Assertions.assertTrue(directoryUtxoOpt.isPresent(),
+                "No directory UTxO for token. Expected NFT: " + directoryNftUnit);
         var directoryUtxo = directoryUtxoOpt.get();
         log.info("directoryUtxo: {}", directoryUtxo);
 
-
-        var aliceAddress = AddressProvider.getBaseAddress(Credential.fromScript(protocolBootstrapParams.programmableLogicBaseParams().scriptHash()),
-                aliceAccount.getBaseAddress().getDelegationCredential().get(),
-                network);
-        log.info("aliceAddress: {}", aliceAddress);
-        var progBaseAddressUtxosOpt = bfBackendService.getUtxoService().getUtxos(aliceAddress.getAddress(), 100, 1);
-        if (!progBaseAddressUtxosOpt.isSuccessful() || progBaseAddressUtxosOpt.getValue().isEmpty()) {
-            Assertions.fail("not progBaseAddresses");
-        }
-
-        var bobAddress = AddressProvider.getBaseAddress(Credential.fromScript(protocolBootstrapParams.programmableLogicBaseParams().scriptHash()),
-                bobAccount.getBaseAddress().getDelegationCredential().get(),
-                network);
-        log.info("bobAddress: {}", bobAddress);
-
-        var progBaseAddressUtxos = progBaseAddressUtxosOpt.getValue();
-        progBaseAddressUtxos.forEach(utxo -> log.info("prog tokens utxo: {}", utxo));
-        var progTokenUtxoOpt = progBaseAddressUtxos.stream().filter(utxo -> utxo.getAmount().stream().anyMatch(amount -> progToken.toUnit().equals(amount.getUnit()))).findAny();
-        if (progTokenUtxoOpt.isEmpty()) {
-            Assertions.fail("no prog token utxo for unit: " + progToken);
-        }
-        var progTokenUtxo = progTokenUtxoOpt.get();
-        log.info("progTokenUtxo: {}", progTokenUtxo);
-
-        var initialValue = progTokenUtxo.toValue();
-        var tokenAmount = initialValue.amountOf(progToken.policyId(), "0x" + progToken.assetName());
+        // Calculate transfer amounts - split token in half
+        var tokenAmount = tokenInfo.quantity();
         var amount1 = tokenAmount.divide(BigInteger.TWO);
         var amount2 = tokenAmount.subtract(amount1);
+        log.info("Transferring {} to alice's script addr, {} to bob's script addr", amount1, amount2);
 
-        // Programmable Token Mint
+        // Build token assets
         var tokenAsset1 = Asset.builder()
-                .name(HexUtil.encodeHexString("PINT".getBytes(), true))
+                .name("0x" + tokenInfo.assetNameHex())
                 .value(amount1)
                 .build();
 
         var tokenAsset2 = Asset.builder()
-                .name(HexUtil.encodeHexString("PINT".getBytes(), true))
-                .value(amount1)
+                .name("0x" + tokenInfo.assetNameHex())
+                .value(amount2)
                 .build();
 
         Value tokenValue1 = Value.builder()
                 .coin(Amount.ada(1).getQuantity())
                 .multiAssets(List.of(
                         MultiAsset.builder()
-                                .policyId(progToken.policyId())
+                                .policyId(tokenInfo.policyId())
                                 .assets(List.of(tokenAsset1))
                                 .build()
                 ))
@@ -215,52 +246,44 @@ public class TransferTokenTest extends AbstractPreviewTest {
                 .coin(Amount.ada(1).getQuantity())
                 .multiAssets(List.of(
                         MultiAsset.builder()
-                                .policyId(progToken.policyId())
+                                .policyId(tokenInfo.policyId())
                                 .assets(List.of(tokenAsset2))
                                 .build()
                 ))
                 .build();
 
-
-//        /// Redeemer for the global programmable logic stake validator
-//pub type ProgrammableLogicGlobalRedeemer {
-//  /// Transfer action with proofs for each token type
-//  TransferAct { proofs: List<TokenProof> }
-//  /// Seize action to confiscate tokens from blacklisted address
-//  SeizeAct {
-//    seize_input_idx: Int,
-//    seize_output_idx: Int,
-//    directory_node_idx: Int,
-//  }
-//}
-
+        // Build programmable global redeemer: TransferAct { proofs: [TokenProof::ByOwner(idx=1)] }
         var programmableGlobalRedeemer = ConstrPlutusData.of(0,
-                // only one prop and it's a list
                 ListPlutusData.of(ConstrPlutusData.of(0, BigIntPlutusData.of(1)))
         );
 
-        log.info("protocolBootstrapParams.programmableGlobalRefInput(): {}", protocolBootstrapParams.programmableGlobalRefInput());
+        log.info("programmableGlobalRefInput: {}", protocolBootstrapParams.programmableGlobalRefInput());
 
         var tx = new ScriptTx()
                 .collectFrom(walletUtxos)
                 .collectFrom(progTokenUtxo, ConstrPlutusData.of(0))
-                // must be first Provide proofs
+                // Substandard transfer withdrawal (must be first)
                 .withdraw(substandardTransferAddress.getAddress(), BigInteger.ZERO, BigIntPlutusData.of(200))
+                // Programmable logic global withdrawal
                 .withdraw(programmableLogicGlobalAddress.getAddress(), BigInteger.ZERO, programmableGlobalRedeemer)
+                // Output tokens to alice and bob
                 .payToContract(aliceAddress.getAddress(), ValueUtil.toAmountList(tokenValue1), ConstrPlutusData.of(0))
                 .payToContract(bobAddress.getAddress(), ValueUtil.toAmountList(tokenValue2), ConstrPlutusData.of(0))
-                .payToAddress(aliceAccount.baseAddress(), Amount.ada(5))
-                .payToAddress(aliceAccount.baseAddress(), Amount.ada(5))
-                .readFrom(TransactionInput.builder()
-                        .transactionId(protocolParamsUtxo.getTxHash())
-                        .index(protocolParamsUtxo.getOutputIndex())
-                        .build(), TransactionInput.builder()
-                        .transactionId(directoryUtxo.getTxHash())
-                        .index(directoryUtxo.getOutputIndex())
-                        .build())
-                .attachRewardValidator(programmableLogicGlobalContract) // global
+                // Reference inputs
+                .readFrom(
+                        TransactionInput.builder()
+                                .transactionId(protocolParamsUtxo.getTxHash())
+                                .index(protocolParamsUtxo.getOutputIndex())
+                                .build(),
+                        TransactionInput.builder()
+                                .transactionId(directoryUtxo.getTxHash())
+                                .index(directoryUtxo.getOutputIndex())
+                                .build()
+                )
+                // Attach validators
+                .attachRewardValidator(programmableLogicGlobalContract)
                 .attachRewardValidator(substandardTransferContract)
-                .attachSpendingValidator(programmableLogicBaseContract) // base
+                .attachSpendingValidator(programmableLogicBaseContract)
                 .withChangeAddress(aliceAccount.baseAddress());
 
         var transaction = quickTxBuilder.compose(tx)
@@ -272,19 +295,18 @@ public class TransferTokenTest extends AbstractPreviewTest {
                 .mergeOutputs(false)
                 .buildAndSign();
 
-        log.info("tx: {}", transaction.serializeToHex());
-        log.info("tx: {}", OBJECT_MAPPER.writeValueAsString(transaction));
+        log.info("tx hex: {}", transaction.serializeToHex());
 
         if (!dryRun) {
             var result = bfBackendService.getTransactionService().submitTransaction(transaction.serialize());
             if (result.isSuccessful()) {
-                log.info("submitted: {}", result.getValue());
+                log.info("Transfer submitted successfully! TxHash: {}", result.getValue());
             } else {
-                log.warn("error: {}", result.getResponse());
+                log.error("Transfer failed: {}", result.getResponse());
+                Assertions.fail("Transaction submission failed: " + result.getResponse());
             }
+        } else {
+            log.info("Dry run - transaction not submitted");
         }
-
     }
-
-
 }

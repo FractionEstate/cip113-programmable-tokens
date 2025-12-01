@@ -23,7 +23,9 @@ The following integration tests were verified against Preview network with a fun
   2. Token issuance (run `IssueTokenTest`)
   3. Pre-funded sub-accounts (run `FundSubAccountsTest`)
 
-  **Note:** This test has hardcoded token policy IDs from an older deployment. It needs to be updated to dynamically discover tokens from the current on-chain state.
+  **Note:** This test now dynamically discovers tokens from on-chain state instead of using hardcoded policy IDs.
+
+- `DiscoverTokensTest` - Utility to discover available tokens at programmable addresses.
 
 ### Sub-Account Funding Utilities
 Utility tests for managing sub-accounts and programmable addresses:
@@ -33,8 +35,28 @@ Utility tests for managing sub-accounts and programmable addresses:
 
 Run funding with: `./gradlew manualIntegrationTest --tests FundSubAccountsTest`
 Run setup with: `./gradlew manualIntegrationTest --tests SetupProgrammableAddressesTest`
+Run token discovery with: `./gradlew manualIntegrationTest --tests DiscoverTokensTest`
 
 ## Changes
+
+### Test Suite Improvements
+
+#### NEW: Dynamic Token Discovery in `TransferTokenTest`
+**File:** `src/programmable-tokens-offchain-java/src/test/java/org/cardanofoundation/cip113/TransferTokenTest.java`
+
+- **Issue:** The original test had hardcoded policy IDs from an old deployment that no longer exist on-chain.
+- **Fix:** Refactored to dynamically discover programmable tokens:
+  - Queries alice's programmable address for available tokens
+  - Builds directory NFT lookup from discovered token's policy ID
+  - Calculates transfer amounts based on actual on-chain balances
+  - No hardcoded policy IDs or asset names
+
+#### NEW: `DiscoverTokensTest` Utility
+**File:** `src/programmable-tokens-offchain-java/src/test/java/org/cardanofoundation/cip113/DiscoverTokensTest.java`
+
+- Discovers programmable tokens at alice's and bob's script addresses
+- Shows registry entries in the directory
+- Useful for debugging and verifying on-chain state before running transfers
 
 ### Frontend Fixes
 
