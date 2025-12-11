@@ -40,28 +40,16 @@ interface MintFormProps {
   substandards: Substandard[];
   /** Callback when transaction is successfully built */
   onTransactionBuilt: (txHex: string, assetName: string, quantity: string) => void;
+  preSelectedSubstandard?: string;
+  preSelectedIssueContract?: string;
 }
 
-/**
- * Form component for minting programmable tokens.
- *
- * Manages form state, validation, and coordinates with the backend
- * to build unsigned minting transactions.
- *
- * @param props - Component props
- * @returns React component
- *
- * @example
- * ```tsx
- * <MintForm
- *   substandards={substandards}
- *   onTransactionBuilt={(txHex, name, qty) => {
- *     setUnsignedTx(txHex);
- *   }}
- * />
- * ```
- */
-export function MintForm({ substandards, onTransactionBuilt }: MintFormProps) {
+export function MintForm({
+  substandards,
+  onTransactionBuilt,
+  preSelectedSubstandard,
+  preSelectedIssueContract,
+}: MintFormProps) {
   const { connected, wallet } = useWallet();
   const { toast: showToast } = useToast();
 
@@ -245,6 +233,8 @@ export function MintForm({ substandards, onTransactionBuilt }: MintFormProps) {
           substandards={substandards}
           onSelect={handleSubstandardSelect}
           disabled={isBuilding}
+          initialSubstandard={preSelectedSubstandard}
+          initialValidator={preSelectedIssueContract}
         />
         {errors.substandard && (
           <p className="mt-1 text-sm text-red-400">{errors.substandard}</p>

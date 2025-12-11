@@ -90,8 +90,11 @@ export function hexToString(hex: string): string {
  * const txHash = await wallet.submitTx(signedTx);
  * ```
  */
-export async function mintToken(request: MintTokenRequest): Promise<MintTokenResponse> {
-  // Ensure assetName is hex encoded (strip 0x prefix if present)
+export async function mintToken(
+  request: MintTokenRequest,
+  protocolTxHash?: string
+): Promise<MintTokenResponse> {
+  // Ensure assetName is hex encoded
   const hexEncodedRequest = {
     ...request,
     assetName: request.assetName.startsWith('0x')
@@ -99,8 +102,12 @@ export async function mintToken(request: MintTokenRequest): Promise<MintTokenRes
       : request.assetName,
   };
 
+  const endpoint = protocolTxHash
+    ? `/issue-token/mint?protocolTxHash=${protocolTxHash}`
+    : '/issue-token/mint';
+
   return apiPost<MintTokenRequest, MintTokenResponse>(
-    '/issue-token/mint',
+    endpoint,
     hexEncodedRequest,
     { timeout: 60000 } // 60 seconds for minting transaction (includes on-chain lookups)
   );

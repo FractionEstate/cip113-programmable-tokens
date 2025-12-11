@@ -84,7 +84,27 @@ export interface Substandard {
  */
 export type SubstandardsResponse = Substandard[];
 
-// =============================================================================
+// ============================================================================
+// Token Registration
+// ============================================================================
+
+export interface RegisterTokenRequest {
+  registrarAddress: string;                    // User's wallet address
+  substandardName: string;                     // e.g., "dummy"
+  substandardIssueContractName: string;        // Required - validator title
+  substandardTransferContractName: string;     // Required - validator title
+  substandardThirdPartyContractName: string;   // Third-party validator (can be empty string)
+  assetName: string;                           // HEX ENCODED token name
+  quantity: string;                            // Amount to register/mint
+  recipientAddress: string;                    // Recipient address (can be empty string)
+}
+
+export interface RegisterTokenResponse {
+  policyId: string;              // Generated policy ID
+  unsignedCborTx: string;        // Unsigned transaction CBOR hex
+}
+
+// ============================================================================
 // Minting
 // =============================================================================
 
@@ -231,9 +251,74 @@ export interface ProtocolBlueprint {
   };
 }
 
-// =============================================================================
-// API Error Handling
-// =============================================================================
+// ============================================================================
+// Protocol Version
+// ============================================================================
+
+export interface ProtocolVersionInfo {
+  registryNodePolicyId: string;
+  progLogicScriptHash: string;
+  txHash: string;
+  slot: number;
+  timestamp: number; // Unix timestamp in seconds (convert to ms for JS Date)
+  default: boolean; // Jackson serializes isDefault as "default"
+}
+
+// ============================================================================
+// Token Transfer
+// ============================================================================
+
+export interface TransferTokenRequest {
+  senderAddress: string;      // Sender's wallet address
+  unit: string;               // Full unit (policyId + assetName hex)
+  quantity: string;           // Amount to transfer
+  recipientAddress: string;   // Recipient's address
+}
+
+// Backend returns plain text CBOR hex string (not JSON)
+export type TransferTokenResponse = string;
+
+// ============================================================================
+// Balance
+// ============================================================================
+
+export interface BalanceLogEntity {
+  id: number;
+  address: string;
+  paymentScriptHash: string;
+  stakeKeyHash: string | null;
+  txHash: string;
+  slot: number;
+  blockHeight: number;
+  balance: string; // JSON string: {"lovelace": "1000000", "unit": "amount"}
+  createdAt: string;
+}
+
+export interface WalletBalanceResponse {
+  walletAddress: string;
+  paymentHash: string;
+  stakeHash: string | null;
+  balances: BalanceLogEntity[];
+}
+
+// Parsed balance entry for UI
+export interface ParsedBalance {
+  lovelace: string;
+  assets: ParsedAsset[];
+}
+
+export interface ParsedAsset {
+  unit: string;           // Full unit (policyId + assetName hex)
+  policyId: string;       // Policy ID (56 chars)
+  assetNameHex: string;   // Asset name in hex
+  assetName: string;      // Decoded asset name (UTF-8, or hex if decode fails)
+  amount: string;         // Amount as string
+  isProgrammable: boolean; // Whether this is a registered programmable token
+}
+
+// ============================================================================
+// API Error
+// ============================================================================
 
 /**
  * Structure for API error responses.

@@ -15,6 +15,7 @@ import com.bloxbean.cardano.client.plutus.spec.BytesPlutusData;
 import com.bloxbean.cardano.client.plutus.spec.ConstrPlutusData;
 import com.bloxbean.cardano.client.plutus.spec.ListPlutusData;
 import com.bloxbean.cardano.client.quicktx.ScriptTx;
+import com.bloxbean.cardano.client.quicktx.Tx;
 import com.bloxbean.cardano.client.transaction.spec.Asset;
 import com.bloxbean.cardano.client.transaction.spec.MultiAsset;
 import com.bloxbean.cardano.client.transaction.spec.TransactionInput;
@@ -68,7 +69,7 @@ public class TransferTokenTest extends AbstractPreviewTest {
 
     @BeforeEach
     public void loadContracts() throws Exception {
-        protocolBootstrapParams = OBJECT_MAPPER.readValue(this.getClass().getClassLoader().getResourceAsStream("protocolBootstrap.json"), ProtocolBootstrapParams.class);
+        protocolBootstrapParams = OBJECT_MAPPER.readValue(this.getClass().getClassLoader().getResourceAsStream("protocol-bootstraps-preview.json"), ProtocolBootstrapParams[].class)[0];
         var plutus = OBJECT_MAPPER.readValue(this.getClass().getClassLoader().getResourceAsStream("plutus.json"), Plutus.class);
         var validators = plutus.validators();
         DIRECTORY_SPEND_CONTRACT = getCompiledCodeFor("registry_spend.registry_spend.spend", validators);
@@ -116,10 +117,17 @@ public class TransferTokenTest extends AbstractPreviewTest {
 
         var dryRun = false;
 
-        // Protocol Params and Directory UTxOs
-        var protocolParamsUtxoOpt = bfBackendService.getUtxoService().getTxOutput(
-                protocolBootstrapParams.protocolParamsUtxo().txHash(),
-                protocolBootstrapParams.protocolParamsUtxo().outputIndex());
+        var bootstrapTxHash = protocolBootstrapParams.txHash();
+
+        var progToken = AssetType.fromUnit("06d5c8efcb3a90db74b7126354acacb80144c4dbd92e9435aca3c13550494e54");
+        var directoryNftUnit = "7bf30a1a7d548203736e90e3f2d0adad36f5cc9b9048486e0190c6ea06d5c8efcb3a90db74b7126354acacb80144c4dbd92e9435aca3c135";
+
+        // Protocol Params 2592ff5b2810679c30996c309080a3635071f923b43edb494a87597c1e6a5be5:0
+        // Directory 2592ff5b2810679c30996c309080a3635071f923b43edb494a87597c1e6a5be5:1
+        // Issuance 2592ff5b2810679c30996c309080a3635071f923b43edb494a87597c1e6a5be5:2
+
+
+        var protocolParamsUtxoOpt = bfBackendService.getUtxoService().getTxOutput(bootstrapTxHash, 0);
         if (!protocolParamsUtxoOpt.isSuccessful()) {
             Assertions.fail("Could not fetch protocol params UTxO. Has the protocol been deployed?");
         }
@@ -321,4 +329,30 @@ public class TransferTokenTest extends AbstractPreviewTest {
             throw e;
         }
     }
+
+
+    @Test
+    public void registerTransferScript() throws Exception {
+
+        var dummyTransferScript = "5857010100323232323225333002323232323253330073370e900218041baa0011323370e6eb400d209003300a300937540022940c024c02800cc020008c01c008c01c004c010dd50008a4c26cacae6955ceaab9e5742ae881";
+
+        var substandardTransferContract = PlutusBlueprintUtil.getPlutusScriptFromCompiledCode(dummyTransferScript, PlutusVersion.v3);
+        log.info("substandardTransferContract: {}", substandardTransferContract.getPolicyId());
+
+        var substandardTransferAddress = AddressProvider.getRewardAddress(substandardTransferContract, network);
+        log.info("substandardTransferAddress: {}", substandardTransferAddress.getAddress());
+
+        var registerAddressTx = new Tx()
+                .from(adminAccount.baseAddress())
+                .registerStakeAddress(substandardTransferAddress.getAddress())
+                .withChangeAddress(adminAccount.baseAddress());
+
+        quickTxBuilder.compose(registerAddressTx)
+                .feePayer(adminAccount.baseAddress())
+                .withSigner(SignerProviders.signerFrom(adminAccount))
+                .completeAndWait();
+
+
+    }
+
 }

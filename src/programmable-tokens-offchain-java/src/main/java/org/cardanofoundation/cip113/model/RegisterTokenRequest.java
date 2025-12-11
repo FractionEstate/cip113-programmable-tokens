@@ -1,7 +1,13 @@
 package org.cardanofoundation.cip113.model;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
+public record RegisterTokenRequest(String registrarAddress,
+                                   String substandardName,
+                                   String substandardIssueContractName,
+                                   String substandardTransferContractName,
+                                   String substandardThirdPartyContractName,
+                                   String assetName,
+                                   String quantity,
+                                   String recipientAddress) {
 
 /**
  * Request to register a new token type in the programmable token registry.

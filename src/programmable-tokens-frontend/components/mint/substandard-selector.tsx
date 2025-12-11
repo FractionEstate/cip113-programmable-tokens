@@ -31,6 +31,8 @@ interface SubstandardSelectorProps {
   onSelect: (substandardId: string, validatorTitle: string) => void;
   /** Whether the selector should be disabled */
   disabled?: boolean;
+  initialSubstandard?: string;
+  initialValidator?: string;
 }
 
 /**
@@ -56,9 +58,11 @@ export function SubstandardSelector({
   substandards,
   onSelect,
   disabled = false,
+  initialSubstandard = '',
+  initialValidator = '',
 }: SubstandardSelectorProps) {
-  const [selectedSubstandard, setSelectedSubstandard] = useState<string>('');
-  const [selectedValidator, setSelectedValidator] = useState<string>('');
+  const [selectedSubstandard, setSelectedSubstandard] = useState<string>(initialSubstandard);
+  const [selectedValidator, setSelectedValidator] = useState<string>(initialValidator);
 
   // Get validator options for selected substandard (memoized to prevent unnecessary recalculations)
   const validatorOptions: SelectOption[] = useMemo(() => {
@@ -70,6 +74,14 @@ export function SubstandardSelector({
       label: v.title,
     })) || [];
   }, [selectedSubstandard, substandards]);
+
+  // Auto-notify parent if both initial values are provided
+  useEffect(() => {
+    if (initialSubstandard && initialValidator) {
+      onSelect(initialSubstandard, initialValidator);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSubstandard, initialValidator]);
 
   const handleSubstandardChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const substandardId = e.target.value;

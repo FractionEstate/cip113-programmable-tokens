@@ -1,17 +1,23 @@
 package org.cardanofoundation.cip113.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.cardanofoundation.cip113.config.AppConfig;
 import org.cardanofoundation.cip113.model.blueprint.Plutus;
 import org.cardanofoundation.cip113.model.blueprint.Validator;
 import org.cardanofoundation.cip113.model.bootstrap.ProtocolBootstrapParams;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Service for loading and managing CIP-0113 protocol bootstrap configuration.
@@ -76,16 +82,11 @@ public class ProtocolBootstrapService {
     /** Jackson ObjectMapper for JSON deserialization */
     private final ObjectMapper objectMapper;
 
-    /**
-     * The parsed Aiken Plutus blueprint containing all validator scripts.
-     * <p>
-     * This object provides access to:
-     * <ul>
-     *   <li>Compiled validator bytecode via {@link Validator#compiledCode()}</li>
-     *   <li>Validator titles for identification</li>
-     *   <li>Script parameters and metadata</li>
-     * </ul>
-     */
+    private final AppConfig.Network network;
+
+    @Value("${programmable.token.default.txHash:}")
+    private String defaultTxHash;
+
     @Getter
     private Plutus plutus;
 
@@ -98,65 +99,83 @@ public class ProtocolBootstrapService {
     @Getter
     private ProtocolBootstrapParams protocolBootstrapParams;
 
-    /**
-     * Initializes the service by loading bootstrap and blueprint files.
-     *
-     * <p>Called automatically by Spring after dependency injection is complete.
-     * Loads both configuration files from the classpath and parses them into
-     * their respective domain objects.</p>
-     *
-     * <p>Files expected in classpath:</p>
-     * <ul>
-     *   <li><code>protocolBootstrap.json</code> - Protocol bootstrap configuration</li>
-     *   <li><code>plutus.json</code> - Aiken-generated Plutus blueprint</li>
-     * </ul>
-     *
-     * @throws RuntimeException if either file cannot be loaded or parsed
-     */
+    // Map of txHash -> ProtocolBootstrapParams for all available versions
+    private final Map<String, ProtocolBootstrapParams> bootstrapsByTxHash = new ConcurrentHashMap<>();
+
     @PostConstruct
     public void init() {
+        log.info("defaultTxHash: {}", defaultTxHash);
+        log.info("network: {}", network.getNetwork());
+
         try {
-            // Load protocol bootstrap parameters (UTxO references, policy IDs)
-            protocolBootstrapParams = objectMapper.readValue(
-                this.getClass().getClassLoader().getResourceAsStream("protocolBootstrap.json"),
-                ProtocolBootstrapParams.class
+
+            var protocolBootstrapFilename = String.format("protocol-bootstraps-%s.json", network.getNetwork());
+            log.info("protocolBootstrapFilename: {}", protocolBootstrapFilename);
+
+            // Load array of protocol bootstrap configurations
+            var bootstrapsList = objectMapper.readValue(
+                    this.getClass().getClassLoader().getResourceAsStream(protocolBootstrapFilename),
+                    new TypeReference<List<ProtocolBootstrapParams>>() {}
             );
 
-            // Load Aiken-generated Plutus blueprint (compiled validators)
+            // Store all bootstraps in map
+            for (ProtocolBootstrapParams params : bootstrapsList) {
+                bootstrapsByTxHash.put(params.txHash(), params);
+                log.info("Loaded protocol bootstrap for txHash: {}", params.txHash());
+            }
+
+            // Set default protocol bootstrap params
+            if (defaultTxHash != null && !defaultTxHash.isEmpty()) {
+                protocolBootstrapParams = bootstrapsByTxHash.get(defaultTxHash);
+                if (protocolBootstrapParams == null) {
+                    log.warn("Default txHash {} not found in bootstraps, using first available", defaultTxHash);
+                    protocolBootstrapParams = bootstrapsList.getFirst();
+                } else {
+                    log.info("Using default protocol bootstrap with txHash: {}", defaultTxHash);
+                }
+            } else {
+                // No default specified, use first one
+                protocolBootstrapParams = bootstrapsList.getFirst();
+                log.info("No default txHash configured, using first bootstrap: {}", protocolBootstrapParams.txHash());
+            }
+
+            // Load plutus contracts
             plutus = objectMapper.readValue(
-                this.getClass().getClassLoader().getResourceAsStream("plutus.json"),
-                Plutus.class
+                    this.getClass().getClassLoader().getResourceAsStream("plutus.json"),
+                    Plutus.class
             );
 
-            log.info("Successfully loaded protocol bootstrap and Plutus blueprint");
-            log.debug("Loaded {} validators from blueprint", plutus.validators().size());
+            log.info("Successfully initialized ProtocolBootstrapService with {} bootstrap versions", bootstrapsByTxHash.size());
         } catch (IOException e) {
-            log.error("Could not load bootstrap or protocol blueprint: {}", e.getMessage());
-            throw new RuntimeException("Failed to initialize protocol bootstrap service", e);
+            log.error("could not load bootstrap or protocol blueprint", e);
+            throw new RuntimeException(e);
         }
     }
 
     /**
-     * Retrieves compiled validator code by its title.
+     * Get protocol bootstrap params by transaction hash
      *
-     * <p>Validator titles follow the Aiken naming convention:</p>
-     * <ul>
-     *   <li>{@code "registry_mint.mint"} - Registry NFT minting policy</li>
-     *   <li>{@code "programmable_logic_base.spend"} - Token spend validator</li>
-     *   <li>{@code "blacklist_mint.mint"} - Blacklist management policy</li>
-     * </ul>
-     *
-     * @param contractTitle The exact title of the validator as defined in the blueprint
-     * @return Optional containing the CBOR-encoded compiled code, or empty if not found
-     *
-     * @see Validator#title()
-     * @see Validator#compiledCode()
+     * @param txHash the transaction hash
+     * @return the protocol bootstrap params or empty if not found
      */
+    public Optional<ProtocolBootstrapParams> getProtocolBootstrapParamsByTxHash(String txHash) {
+        return Optional.ofNullable(bootstrapsByTxHash.get(txHash));
+    }
+
+    /**
+     * Get all available protocol bootstrap configurations
+     *
+     * @return map of txHash to ProtocolBootstrapParams
+     */
+    public Map<String, ProtocolBootstrapParams> getAllBootstraps() {
+        return Map.copyOf(bootstrapsByTxHash);
+    }
+
     public Optional<String> getProtocolContract(String contractTitle) {
         return plutus.validators().stream()
-            .filter(validator -> validator.title().equals(contractTitle))
-            .findAny()
-            .map(Validator::compiledCode);
+                .filter(validator -> validator.title().equals(contractTitle))
+                .findAny()
+                .map(Validator::compiledCode);
     }
 
 }

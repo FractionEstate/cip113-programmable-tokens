@@ -42,9 +42,8 @@ export * from './client';
 
 // Re-export substandard API functions
 export * from './substandards';
-
-// Re-export minting API functions
+export * from './registration';
 export * from './minting';
-
-// Re-export protocol API functions
-export * from './protocol';
+export * from './transfer';
+export * from './balance';
+export * from './protocol-versions';

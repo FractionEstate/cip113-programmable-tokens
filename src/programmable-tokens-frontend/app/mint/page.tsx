@@ -27,9 +27,11 @@
 "use client";
 
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { PageContainer } from '@/components/layout/page-container';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { useSubstandards } from '@/hooks/use-substandards';
 
 /**
@@ -66,6 +68,10 @@ interface TransactionData {
  * @returns React component
  */
 export default function MintPage() {
+  const searchParams = useSearchParams();
+  const preSelectedSubstandard = searchParams.get('substandard');
+  const preSelectedIssueContract = searchParams.get('issueContract');
+
   const { substandards, isLoading, error } = useSubstandards();
   const [currentStep, setCurrentStep] = useState<MintStep>('form');
   const [transactionData, setTransactionData] = useState<TransactionData | null>(null);
@@ -103,6 +109,13 @@ export default function MintPage() {
           <p className="text-dark-300">
             Create new CIP-113 tokens with embedded validation logic
           </p>
+          {preSelectedSubstandard && preSelectedIssueContract && (
+            <div className="mt-4 p-3 bg-primary-500/10 border border-primary-500/20 rounded-lg">
+              <p className="text-sm text-primary-300">
+                <strong>Using registered policy:</strong> {preSelectedSubstandard} / {preSelectedIssueContract}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Loading State */}
@@ -145,6 +158,8 @@ export default function MintPage() {
               <MintForm
                 substandards={substandards}
                 onTransactionBuilt={handleTransactionBuilt}
+                preSelectedSubstandard={preSelectedSubstandard || undefined}
+                preSelectedIssueContract={preSelectedIssueContract || undefined}
               />
             </CardContent>
           </Card>
