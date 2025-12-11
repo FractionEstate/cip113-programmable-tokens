@@ -12,64 +12,18 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-/**
- * Service for managing CIP-0113 protocol parameters.
- *
- * <p>Protocol parameters define the core configuration for a CIP-0113 deployment,
- * including script references and policy IDs. This service maintains both database
- * persistence and an in-memory cache for efficient access.</p>
- *
- * <h2>Protocol Parameters</h2>
- * <p>Each protocol params version contains:</p>
- * <ul>
- *   <li><strong>registryNodePolicyId</strong>: Policy ID for registry NFT minting</li>
- *   <li><strong>progLogicScriptHash</strong>: Hash of programmable logic base script</li>
- *   <li><strong>progLogicGlobalScriptHash</strong>: Hash of global coordinator script</li>
- *   <li><strong>blacklistNodePolicyId</strong>: Policy ID for blacklist management</li>
- *   <li><strong>Slot and Block Info</strong>: When parameters became active</li>
- * </ul>
- *
- * <h2>Versioning</h2>
- * <p>Protocol parameters are versioned by slot number, enabling:</p>
- * <ul>
- *   <li>Protocol upgrades without breaking existing tokens</li>
- *   <li>Historical queries for audit purposes</li>
- *   <li>Time-travel queries to reconstruct past state</li>
- * </ul>
- *
- * <h2>Caching Strategy</h2>
- * <p>Parameters are loaded into a thread-safe {@link CopyOnWriteArrayList} at startup
- * and kept in sync with database writes. This provides:</p>
- * <ul>
- *   <li>Zero-latency reads for parameter lookups</li>
- *   <li>Thread-safe access from multiple request handlers</li>
- *   <li>Automatic ordering by slot for version queries</li>
- * </ul>
- *
- * @see ProtocolParamsEntity
- * @see ProtocolParamsEventListener
- */
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class ProtocolParamsService {
 
-    /** Repository for protocol params persistence */
     private final ProtocolParamsRepository repository;
 
-    /**
-     * Thread-safe in-memory cache of protocol params, ordered by slot.
-     * <p>
-     * Uses {@link CopyOnWriteArrayList} for safe concurrent access during
-     * reads while allowing occasional writes during parameter updates.
-     */
+    // Thread-safe in-memory cache, ordered by slot
     private final CopyOnWriteArrayList<ProtocolParamsEntity> inMemoryCache = new CopyOnWriteArrayList<>();
 
     /**
-     * Load all protocol params from database into memory at boot time.
-     *
-     * <p>Called automatically by Spring after dependency injection. Populates
-     * the in-memory cache with all existing protocol params versions.</p>
+     * Load all protocol params from database into memory at boot time
      */
     @PostConstruct
     public void init() {
@@ -80,17 +34,14 @@ public class ProtocolParamsService {
     }
 
     /**
-     * Save a new protocol params version to both database and in-memory cache.
-     *
-     * <p>This operation is idempotent - if a params version with the same
-     * transaction hash already exists, it returns the existing entity.</p>
+     * Save a new protocol params version to both database and in-memory cache
      *
      * @param entity the protocol params entity to save
-     * @return the saved entity (or existing entity if duplicate)
+     * @return the saved entity
      */
     @Transactional
     public ProtocolParamsEntity save(ProtocolParamsEntity entity) {
-        // Check if already exists (idempotency)
+        // Check if already exists
         if (repository.existsByTxHash(entity.getTxHash())) {
             log.warn("Protocol params with txHash {} already exists, skipping", entity.getTxHash());
             return repository.findByTxHash(entity.getTxHash()).orElseThrow();
@@ -110,11 +61,7 @@ public class ProtocolParamsService {
     }
 
     /**
-     * Add entity to in-memory cache in sorted order by slot.
-     *
-     * <p>Performs binary-search-like insertion to maintain slot ordering.</p>
-     *
-     * @param entity the entity to add
+     * Add entity to in-memory cache in sorted order (by slot)
      */
     private void addToMemorySorted(ProtocolParamsEntity entity) {
         int insertIndex = 0;
@@ -130,9 +77,9 @@ public class ProtocolParamsService {
     }
 
     /**
-     * Get the latest (most recent) protocol params version.
+     * Get the latest protocol params version
      *
-     * @return the latest protocol params, or empty if none exist
+     * @return the latest protocol params or empty if none exist
      */
     public Optional<ProtocolParamsEntity> getLatest() {
         if (inMemoryCache.isEmpty()) {
@@ -142,9 +89,9 @@ public class ProtocolParamsService {
     }
 
     /**
-     * Get all protocol params versions from memory.
+     * Get all protocol params versions from memory (ordered by slot ascending)
      *
-     * @return immutable list of all protocol params ordered by slot ascending
+     * @return list of all protocol params
      */
     public List<ProtocolParamsEntity> getAll() {
         return List.copyOf(inMemoryCache);

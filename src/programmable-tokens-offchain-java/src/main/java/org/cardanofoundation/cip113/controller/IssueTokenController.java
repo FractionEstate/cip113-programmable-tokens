@@ -21,12 +21,6 @@ import com.bloxbean.cardano.yaci.store.utxo.storage.impl.repository.UtxoReposito
 import com.easy1staking.cardano.util.UtxoUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.cardanofoundation.cip113.config.AppConfig;
@@ -37,8 +31,6 @@ import org.cardanofoundation.cip113.service.ProtocolBootstrapService;
 import org.cardanofoundation.cip113.service.SubstandardService;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
-import jakarta.validation.Valid;
-import org.cardanofoundation.cip113.exception.ApiException;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -50,92 +42,26 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * REST Controller for CIP-0113 Programmable Token operations.
- *
- * <p>This controller provides endpoints for the complete lifecycle of programmable
- * tokens on Cardano, including registration, minting, and issuance operations.
- *
- * <h2>API Endpoints</h2>
- * <ul>
- *   <li>{@code POST /register} - Register a new programmable token policy in the registry</li>
- *   <li>{@code POST /mint} - Mint additional tokens for an existing policy</li>
- *   <li>{@code POST /issue} - Combined register + mint in a single transaction</li>
- * </ul>
- *
- * <h2>Transaction Flow</h2>
- * <p>All endpoints return unsigned transaction CBOR hex. The client is responsible for:
- * <ol>
- *   <li>Receiving the unsigned transaction</li>
- *   <li>Signing with the appropriate wallet</li>
- *   <li>Submitting to the Cardano network</li>
- * </ol>
- *
- * <h2>CIP-0113 Protocol Integration</h2>
- * <p>This controller integrates with the on-chain CIP-0113 protocol:
- * <ul>
- *   <li>Registry operations use the sorted linked list validators</li>
- *   <li>Minting uses parametrized issuance policies</li>
- *   <li>All tokens are locked at the programmable logic base address</li>
- * </ul>
- *
- * @see RegisterTokenRequest for registration parameters
- * @see MintTokenRequest for minting parameters
- * @see IssueTokenRequest for combined issue parameters
- */
 @RestController
 @RequestMapping("${apiPrefix}/issue-token")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "Token Issuance", description = "Endpoints for minting and managing programmable tokens")
 public class IssueTokenController {
 
-    /** JSON serializer for Plutus data structures */
     private final ObjectMapper objectMapper;
 
-    /** Network configuration (mainnet/testnet) */
     private final AppConfig.Network network;
 
-    /** Repository for querying UTxOs from the indexer */
     private final UtxoRepository utxoRepository;
 
     private final RegistryNodeParser registryNodeParser;
 
     private final ProtocolBootstrapService protocolBootstrapService;
 
-    /** Service for loading substandard validators */
     private final SubstandardService substandardService;
 
-    /** Transaction builder for creating Cardano transactions */
     private final QuickTxBuilder quickTxBuilder;
 
-    /**
-     * Register a new programmable token policy in the CIP-0113 registry.
-     *
-     * <p>This endpoint creates a transaction that:
-     * <ol>
-     *   <li>Inserts a new entry into the registry linked list</li>
-     *   <li>Associates the policy with transfer and issuance logic scripts</li>
-     *   <li>Does NOT mint any tokens (use /mint or /issue for that)</li>
-     * </ol>
-     *
-     * <h3>Registry Structure</h3>
-     * <p>The registry is a sorted linked list where each node contains:
-     * <ul>
-     *   <li>key: The currency symbol (policy ID)</li>
-     *   <li>next: Pointer to next entry</li>
-     *   <li>transfer_logic_script: Script that validates transfers</li>
-     *   <li>third_party_transfer_logic_script: Script for admin operations</li>
-     * </ul>
-     *
-     * @param registerTokenRequest the registration parameters including:
-     *        - issuerBaseAddress: The issuer's wallet address (bech32)
-     *        - substandardName: The substandard ID (e.g., "dummy")
-     *        - substandardIssueContractName: Name of the issuance validator
-     *        - substandardTransferContractName: Name of the transfer validator
-     * @return ResponseEntity containing the unsigned transaction CBOR hex
-     * @throws ApiException if validation fails or protocol resources unavailable
-     */
     @PostMapping("/register")
     public ResponseEntity<?> register(
             @RequestBody RegisterTokenRequest registerTokenRequest,
@@ -155,11 +81,11 @@ public class IssueTokenController {
             var bootstrapTxHash = protocolBootstrapParams.txHash();
 
             var protocolParamsUtxoOpt = utxoRepository.findById(UtxoId.builder()
-                    .txHash(protocolParamsUtxoRef.txHash())
-                    .outputIndex(protocolParamsUtxoRef.outputIndex())
+                    .txHash(bootstrapTxHash)
+                    .outputIndex(0)
                     .build());
             if (protocolParamsUtxoOpt.isEmpty()) {
-                throw ApiException.internalError("Could not resolve protocol params UTxO");
+                return ResponseEntity.internalServerError().body("could not resolve protocol params");
             }
 
             var protocolParamsUtxo = protocolParamsUtxoOpt.get();
@@ -199,13 +125,9 @@ public class IssueTokenController {
             log.info("directorySpendContractAddress: {}", directorySpendContractAddress.getAddress());
 
 
-            var issuanceUtxoRef = protocolBootstrapParams.issuanceUtxo();
-            var issuanceUtxoOpt = utxoRepository.findById(UtxoId.builder()
-                    .txHash(issuanceUtxoRef.txHash())
-                    .outputIndex(issuanceUtxoRef.outputIndex())
-                    .build());
+            var issuanceUtxoOpt = utxoRepository.findById(UtxoId.builder().txHash(bootstrapTxHash).outputIndex(2).build());
             if (issuanceUtxoOpt.isEmpty()) {
-                throw ApiException.internalError("Could not resolve issuance UTxO");
+                return ResponseEntity.internalServerError().body("could not resolve issuance params");
             }
             var issuanceUtxo = issuanceUtxoOpt.get();
             log.info("issuanceUtxo: {}", issuanceUtxo);
@@ -233,7 +155,7 @@ public class IssueTokenController {
 
             if (substandardIssuanceContractOpt.isEmpty() || substandardTransferContractOpt.isEmpty()) {
                 log.warn("substandard issuance or transfer contract are empty");
-                throw ApiException.badRequest("Substandard issuance or transfer contract not found");
+                return ResponseEntity.badRequest().body("substandard issuance or transfer contract are empty");
             }
 
             var substandardIssueContract = PlutusBlueprintUtil.getPlutusScriptFromCompiledCode(substandardIssuanceContractOpt.get().scriptBytes(), PlutusVersion.v3);
@@ -257,7 +179,7 @@ public class IssueTokenController {
 
             var issuanceMintOpt = protocolBootstrapService.getProtocolContract("issuance_mint.issuance_mint.mint");
             if (issuanceMintOpt.isEmpty()) {
-                throw ApiException.internalError("Could not find issuance mint contract in blueprint");
+                return ResponseEntity.internalServerError().body("could not find issuance mint contract");
             }
 
             var issuanceContract = PlutusBlueprintUtil.getPlutusScriptFromCompiledCode(AikenScriptUtil.applyParamToScript(issuanceParameters, issuanceMintOpt.get()), PlutusVersion.v3);
@@ -477,25 +399,23 @@ public class IssueTokenController {
                             .orElseThrow(() -> new IllegalArgumentException("Protocol version not found: " + protocolTxHash))
                     : protocolBootstrapService.getProtocolBootstrapParams();
 
-            var protocolParamsUtxoRef = protocolBootstrapParams.protocolParamsUtxo();
+            var bootstrapTxHash = protocolBootstrapParams.txHash();
+
+            // TODO: add these utxo to the protocol bootstrap json
             var protocolParamsUtxoOpt = utxoRepository.findById(UtxoId.builder()
-                    .txHash(protocolParamsUtxoRef.txHash())
-                    .outputIndex(protocolParamsUtxoRef.outputIndex())
+                    .txHash(bootstrapTxHash)
+                    .outputIndex(0)
                     .build());
             if (protocolParamsUtxoOpt.isEmpty()) {
-                throw ApiException.internalError("Could not resolve protocol params UTxO");
+                return ResponseEntity.internalServerError().body("could not resolve protocol params");
             }
 
             var protocolParamsUtxo = protocolParamsUtxoOpt.get();
             log.info("protocolParamsUtxo: {}", protocolParamsUtxo);
 
-            var issuanceUtxoRef = protocolBootstrapParams.issuanceUtxo();
-            var issuanceUtxoOpt = utxoRepository.findById(UtxoId.builder()
-                    .txHash(issuanceUtxoRef.txHash())
-                    .outputIndex(issuanceUtxoRef.outputIndex())
-                    .build());
+            var issuanceUtxoOpt = utxoRepository.findById(UtxoId.builder().txHash(bootstrapTxHash).outputIndex(2).build());
             if (issuanceUtxoOpt.isEmpty()) {
-                throw ApiException.internalError("Could not resolve issuance UTxO");
+                return ResponseEntity.internalServerError().body("could not resolve issuance params");
             }
             var issuanceUtxo = issuanceUtxoOpt.get();
             log.info("issuanceUtxo: {}", issuanceUtxo);
@@ -509,7 +429,7 @@ public class IssueTokenController {
 
             var issuerUtxosOpt = utxoRepository.findUnspentByOwnerAddr(mintTokenRequest.issuerBaseAddress(), Pageable.unpaged());
             if (issuerUtxosOpt.isEmpty()) {
-                throw ApiException.badRequest("Issuer wallet is empty");
+                return ResponseEntity.badRequest().body("issuer wallet is empty");
             }
             var issuerUtxos = issuerUtxosOpt.get().stream().map(UtxoUtil::toUtxo).toList();
 
@@ -533,7 +453,7 @@ public class IssueTokenController {
 
             var issuanceMintOpt = protocolBootstrapService.getProtocolContract("issuance_mint.issuance_mint.mint");
             if (issuanceMintOpt.isEmpty()) {
-                throw ApiException.internalError("Could not find issuance mint contract in blueprint");
+                return ResponseEntity.internalServerError().body("could not find issuance mint contract");
             }
 
             var issuanceContract = PlutusBlueprintUtil.getPlutusScriptFromCompiledCode(AikenScriptUtil.applyParamToScript(issuanceParameters, issuanceMintOpt.get()), PlutusVersion.v3);
@@ -606,8 +526,8 @@ public class IssueTokenController {
             return ResponseEntity.ok(transaction.serializeToHex());
 
         } catch (Exception e) {
-            log.error("Failed to mint token: {}", e.getMessage(), e);
-            throw ApiException.internalError("Failed to mint token: " + e.getMessage(), e);
+            log.warn("error", e);
+            return ResponseEntity.internalServerError().body(e.getMessage());
         }
     }
 

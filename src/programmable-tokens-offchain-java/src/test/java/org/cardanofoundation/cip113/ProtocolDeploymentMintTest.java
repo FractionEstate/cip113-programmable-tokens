@@ -26,12 +26,14 @@ import org.cardanofoundation.cip113.model.blueprint.Plutus;
 import org.cardanofoundation.cip113.model.bootstrap.*;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigInteger;
 import java.util.List;
 
 @Slf4j
+@Tag("manual-integration")
 public class ProtocolDeploymentMintTest extends AbstractPreviewTest {
 
 
@@ -299,10 +301,6 @@ public class ProtocolDeploymentMintTest extends AbstractPreviewTest {
         var directorySpendParams = new DirectorySpendParams(protocolParamsContract.getPolicyId(), directorySpendContract.getPolicyId());
         var programmableBaseRefInput = new TxInput(txHash, 3);
         var programmableGlobalRefInput = new TxInput(txHash, 4);
-        // UTxO references for protocol components
-        var protocolParamsUtxo = new TxInput(txHash, 0);
-        var directoryUtxo = new TxInput(txHash, 1);
-        var issuanceUtxo = new TxInput(txHash, 2);
 
         var protocolBootstrapParams = new ProtocolBootstrapParams(protocolParams,
                 programmableLogicGlobalParams,
@@ -312,9 +310,6 @@ public class ProtocolDeploymentMintTest extends AbstractPreviewTest {
                 directorySpendParams,
                 programmableBaseRefInput,
                 programmableGlobalRefInput,
-                protocolParamsUtxo,
-                directoryUtxo,
-                issuanceUtxo,
                 txHash);
 
         var stakeRegistrationTx = new Tx()

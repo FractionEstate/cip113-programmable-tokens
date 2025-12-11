@@ -19,67 +19,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Service for loading and managing CIP-0113 protocol bootstrap configuration.
- *
- * <p>This service is responsible for loading two critical configuration files at startup:</p>
- * <ul>
- *   <li><strong>protocolBootstrap.json</strong>: Contains bootstrap transaction UTxO references,
- *       policy IDs, and other protocol initialization parameters.</li>
- *   <li><strong>plutus.json</strong>: The Aiken-generated blueprint containing compiled Plutus
- *       validator scripts and their metadata.</li>
- * </ul>
- *
- * <h2>Initialization</h2>
- * <p>Both files are loaded from the classpath during application startup via the {@code @PostConstruct}
- * lifecycle hook. If either file is missing or malformed, the service throws a RuntimeException,
- * preventing the application from starting in an invalid state.</p>
- *
- * <h2>Protocol Bootstrap Parameters</h2>
- * <p>The bootstrap parameters define:</p>
- * <ul>
- *   <li>Reference UTxO transaction IDs and output indices</li>
- *   <li>Protocol policy IDs for various validator scripts</li>
- *   <li>Initial stake key credentials</li>
- * </ul>
- *
- * <h2>Plutus Blueprint</h2>
- * <p>The Plutus blueprint provides:</p>
- * <ul>
- *   <li>Compiled validator bytecode (CBOR-encoded)</li>
- *   <li>Validator titles for lookup operations</li>
- *   <li>Script hashes and policy IDs</li>
- *   <li>Parameter specifications for script instantiation</li>
- * </ul>
- *
- * <h2>Usage Example</h2>
- * <pre>{@code
- * @Autowired
- * private ProtocolBootstrapService bootstrapService;
- *
- * public void buildTransaction() {
- *     // Get bootstrap UTxO references
- *     var params = bootstrapService.getProtocolBootstrapParams();
- *     var refTxId = params.getReferenceTxId();
- *
- *     // Get compiled validator code
- *     Optional<String> code = bootstrapService.getProtocolContract("registry_mint.mint");
- *     code.ifPresent(compiledCode -> {
- *         // Use compiled code for transaction building
- *     });
- * }
- * }</pre>
- *
- * @see Plutus
- * @see ProtocolBootstrapParams
- * @see Validator
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class ProtocolBootstrapService {
 
-    /** Jackson ObjectMapper for JSON deserialization */
     private final ObjectMapper objectMapper;
 
     private final AppConfig.Network network;
@@ -90,12 +34,6 @@ public class ProtocolBootstrapService {
     @Getter
     private Plutus plutus;
 
-    /**
-     * Protocol bootstrap parameters loaded from protocolBootstrap.json.
-     * <p>
-     * Contains the UTxO references and policy IDs needed to interact with
-     * the deployed protocol instance on-chain.
-     */
     @Getter
     private ProtocolBootstrapParams protocolBootstrapParams;
 

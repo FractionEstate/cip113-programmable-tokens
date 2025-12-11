@@ -13,11 +13,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class BalanceValueHelperTest {
 
-    // Valid 56-character policy ID for testing (28 bytes hex)
-    private static final String TEST_POLICY_ID = "aabbccddee11223344556677889900aabbccddee1122334455667788";
-    // Valid hex asset name for testing
-    private static final String TEST_ASSET_NAME = "746f6b656e31"; // "token1" in hex
-
     @Test
     void testCalculateSignedDiff_PositiveDiff() {
         // Given - balance increased
@@ -55,11 +50,11 @@ class BalanceValueHelperTest {
         // Given
         Value previous = createBalanceWithAssets(
                 BigInteger.valueOf(1000),
-                TEST_POLICY_ID, TEST_ASSET_NAME, BigInteger.valueOf(100)
+                "policyId1", "assetName1", BigInteger.valueOf(100)
         );
         Value current = createBalanceWithAssets(
                 BigInteger.valueOf(2000),
-                TEST_POLICY_ID, TEST_ASSET_NAME, BigInteger.valueOf(75)
+                "policyId1", "assetName1", BigInteger.valueOf(75)
         );
 
         String previousJson = BalanceValueHelper.toJson(previous);
@@ -70,13 +65,7 @@ class BalanceValueHelperTest {
 
         // Then
         assertEquals("1000", diff.get("lovelace")); // Increased by 1000
-        // Asset key is policyId + assetName without 0x prefix
-        String actualAssetKey = diff.keySet().stream()
-                .filter(k -> !k.equals("lovelace"))
-                .findFirst()
-                .orElse(null);
-        assertNotNull(actualAssetKey, "Should have an asset key");
-        assertEquals("-25", diff.get(actualAssetKey)); // Decreased by 25
+        assertEquals("-25", diff.get("policyId1assetName1")); // Decreased by 25
     }
 
     @Test
@@ -98,7 +87,7 @@ class BalanceValueHelperTest {
         Value previous = Value.builder().coin(BigInteger.valueOf(1000)).build();
         Value current = createBalanceWithAssets(
                 BigInteger.valueOf(1000),
-                TEST_POLICY_ID, TEST_ASSET_NAME, BigInteger.valueOf(50)
+                "policyId1", "assetName1", BigInteger.valueOf(50)
         );
 
         String previousJson = BalanceValueHelper.toJson(previous);
@@ -109,13 +98,7 @@ class BalanceValueHelperTest {
 
         // Then
         assertFalse(diff.containsKey("lovelace")); // No change in lovelace
-        // Find the asset key dynamically (format depends on serialization)
-        String assetKey = diff.keySet().stream()
-                .filter(k -> !k.equals("lovelace"))
-                .findFirst()
-                .orElse(null);
-        assertNotNull(assetKey, "Should have an asset key");
-        assertEquals("50", diff.get(assetKey)); // New asset
+        assertEquals("50", diff.get("policyId1assetName1")); // New asset
     }
 
     @Test
@@ -123,7 +106,7 @@ class BalanceValueHelperTest {
         // Given - asset removed in current
         Value previous = createBalanceWithAssets(
                 BigInteger.valueOf(1000),
-                TEST_POLICY_ID, TEST_ASSET_NAME, BigInteger.valueOf(50)
+                "policyId1", "assetName1", BigInteger.valueOf(50)
         );
         Value current = Value.builder().coin(BigInteger.valueOf(1000)).build();
 
@@ -135,13 +118,7 @@ class BalanceValueHelperTest {
 
         // Then
         assertFalse(diff.containsKey("lovelace")); // No change in lovelace
-        // Find the asset key dynamically (format depends on serialization)
-        String assetKey = diff.keySet().stream()
-                .filter(k -> !k.equals("lovelace"))
-                .findFirst()
-                .orElse(null);
-        assertNotNull(assetKey, "Should have an asset key");
-        assertEquals("-50", diff.get(assetKey)); // Asset removed (negative)
+        assertEquals("-50", diff.get("policyId1assetName1")); // Asset removed (negative)
     }
 
     @Test

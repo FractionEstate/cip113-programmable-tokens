@@ -3,6 +3,36 @@
 ## Summary
 This PR addresses critical issues across the entire codebase including frontend browser compatibility, backend type safety, comprehensive test suite fixes, new frontend pages, E2E testing, OpenAPI documentation, and documentation improvements. All tests now pass with integration tests properly skipped when prerequisites are unavailable.
 
+## Test Tagging: @Tag("manual-integration") for Preview Network Tests
+
+Added `@Tag("manual-integration")` annotation to all integration test classes that extend `AbstractPreviewTest`. These tests require Blockfrost API access and Preview network connectivity.
+
+### Files Modified
+- `DirectoryMintTest.java` - Added `@Tag("manual-integration")`
+- `IssueTokenTest.java` - Added `@Tag("manual-integration")`
+- `TransferTokenTest.java` - Added `@Tag("manual-integration")`
+- `ProtocolDeploymentMintTest.java` - Added `@Tag("manual-integration")`
+- `ProtocolParamsMintTest.java` - Added `@Tag("manual-integration")`
+
+### Already Tagged (no changes needed)
+- `FundSubAccountsTest.java` - Already had `@Tag("manual-integration")`
+- `SetupProgrammableAddressesTest.java` - Already had `@Tag("manual-integration")`
+- `DiscoverTokensTest.java` - Already had `@Tag("manual-integration")`
+
+### Skipped (not extending AbstractPreviewTest)
+- `GenerateSubAccountsTest.java` - Does not extend `AbstractPreviewTest`, purely local utility
+
+### Usage
+To run these integration tests specifically:
+```bash
+./gradlew test --tests "*Test" -DincludeTags="manual-integration"
+```
+
+To exclude these tests from regular test runs:
+```bash
+./gradlew test -DexcludeTags="manual-integration"
+```
+
 ## Critical Fix: API Type Consistency (recipientAddress)
 
 Fixed inconsistency between frontend and backend API types for `recipientAddress` field.

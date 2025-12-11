@@ -6,62 +6,28 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.Optional;
 
-/**
- * Utility class for Cardano address parsing and decomposition.
- * Provides methods to extract payment credentials and stake key hashes from bech32 addresses.
- */
 @Slf4j
 public class AddressUtil {
 
-    private AddressUtil() {
-        // Utility class - prevent instantiation
-    }
-
-    /**
-     * Components extracted from a Cardano address.
-     * Contains the full address, payment script hash, and stake key hash.
-     */
     public static class AddressComponents {
         private final String fullAddress;
         private final String paymentScriptHash;
         private final String stakeKeyHash;
 
-        /**
-         * Create address components.
-         *
-         * @param fullAddress       the original bech32 address
-         * @param paymentScriptHash the payment credential hash (hex)
-         * @param stakeKeyHash      the stake key hash (hex), may be null
-         */
         public AddressComponents(String fullAddress, String paymentScriptHash, String stakeKeyHash) {
             this.fullAddress = fullAddress;
             this.paymentScriptHash = paymentScriptHash;
             this.stakeKeyHash = stakeKeyHash;
         }
 
-        /**
-         * Get the original bech32 address.
-         *
-         * @return the full address
-         */
         public String getFullAddress() {
             return fullAddress;
         }
 
-        /**
-         * Get the payment script hash.
-         *
-         * @return the payment credential hash in hex
-         */
         public String getPaymentScriptHash() {
             return paymentScriptHash;
         }
 
-        /**
-         * Get the stake key hash.
-         *
-         * @return the stake key hash in hex, or null if not present
-         */
         public String getStakeKeyHash() {
             return stakeKeyHash;
         }
