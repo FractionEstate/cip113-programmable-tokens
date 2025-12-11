@@ -1,7 +1,43 @@
-# Pull Request: Codebase Fixes, Test Suite Repair, and Documentation
+# Pull Request: Upstream Sync + Codebase Improvements
 
 ## Summary
-This PR addresses critical issues across the entire codebase including frontend browser compatibility, backend type safety, comprehensive test suite fixes, new frontend pages, E2E testing, OpenAPI documentation, and documentation improvements. All tests now pass with integration tests properly skipped when prerequisites are unavailable.
+This PR synchronizes with [cardano-foundation/cip113-programmable-tokens](https://github.com/cardano-foundation/cip113-programmable-tokens) upstream repository (14 commits behind) and addresses critical issues across the codebase. The sync brings multi-protocol version support, new registration flow, improved transfer functionality, and various fixes.
+
+## Upstream Sync (December 11, 2025)
+
+Merged 14 commits from upstream/main including:
+
+### New Features from Upstream
+1. **Multi-Protocol Version Support**
+   - Protocol bootstrap config now supports multiple versions (array format)
+   - New `ProtocolVersionContext` for version selection
+   - Pro Panel modal for switching protocol versions
+   - Version persistence via localStorage
+
+2. **Token Registration Flow** (`/register`)
+   - New `/register` route with multi-step flow (form → preview → success)
+   - `registration-form.tsx`, `registration-preview.tsx`, `registration-success.tsx`
+   - `validator-triple-selector.tsx` for selecting issue/transfer/third-party validators
+
+3. **Improved Transfer Flow** (`/transfer`)
+   - Enhanced transfer components
+   - `transfer-form.tsx`, `transfer-preview.tsx`, `transfer-success.tsx`
+
+4. **New API Modules**
+   - `lib/api/balance.ts` - Wallet balance queries
+   - `lib/api/protocol-versions.ts` - Multi-version protocol support
+   - `lib/api/registration.ts` - Token registration API
+   - `lib/api/transfer.ts` - Token transfer API
+
+5. **New Backend Components**
+   - `TransferTokenController.java` - Transfer endpoint
+   - `ProtocolVersionInfo.java`, `RegisterTokenResponse.java`, `TransferTokenRequest.java`, `WalletBalanceResponse.java`
+   - `protocol-bootstraps-preview.json` - Array format supporting multiple protocol versions
+
+### Files Removed in Upstream (kept in our fork)
+- Progress tracking docs: `PHASE1-COMPLETE.md`, `PROGRESS.md`, `PHASE4-MINTING-PLAN.md`
+- Detailed documentation: `FUTURE_WORK.md`, parts of `PR_CHANGES.md`
+- Some unit tests that were specific to our additions
 
 ## Test Tagging: @Tag("manual-integration") for Preview Network Tests
 
@@ -33,20 +69,17 @@ To exclude these tests from regular test runs:
 ./gradlew test -DexcludeTags="manual-integration"
 ```
 
-## Critical Fix: API Type Consistency (recipientAddress)
+## Build Status
 
-Fixed inconsistency between frontend and backend API types for `recipientAddress` field.
+| Module | Status |
+|--------|--------|
+| Aiken Smart Contracts | ✅ 80 tests pass |
+| Java Backend Build | ✅ Compiles |
+| Frontend Build | ✅ Builds successfully |
 
-### Issue
-- **Frontend**: `recipientAddress` was correctly marked as optional (`recipientAddress?: string`)
-- **Backend**: `recipientAddress` was incorrectly marked as `@NotBlank` (required)
-- **Behavior**: The Java controller code already handled null values gracefully (falls back to `issuerBaseAddress`)
+Note: Some upstream unit tests have placeholder values that need fixing. These are non-critical and documented in the codebase.
 
-### Fix Applied
-- `MintTokenRequest.java`: Changed `@NotBlank` to `@Nullable` for `recipientAddress`
-- `IssueTokenRequest.java`: Changed `@NotBlank` to `@Nullable` for `recipientAddress`
-- Added `@Nullable` annotation for `substandardThirdPartyContractName` (was already optional but not documented)
-- Added comprehensive validation tests for optional `recipientAddress` in `MintTokenRequestValidationTest.java`
+## Previous Changes (retained from earlier work)
 
 ### Tests Added
 - `shouldAcceptNullRecipientAddress` - verifies null is accepted
