@@ -267,7 +267,7 @@ const fixture_plutarch_baseline_3rd_party_2: Transaction = {
 const fixture_redeemer_plutarch_baseline_3rd_party_2: ProgrammableLogicGlobalRedeemer =
   ThirdPartyAct {
     registry_node_idx: 1,
-    input_idxs: [0, 2],
+    input_idxs: [0, 1],
     outputs_start_idx: 2,
     length_input_idxs: 2,
   }

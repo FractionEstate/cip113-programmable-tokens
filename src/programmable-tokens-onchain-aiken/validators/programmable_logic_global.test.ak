@@ -373,7 +373,7 @@ fn validate_third_party_with_idxs(input_idxs: List<Int>) -> Bool {
 
 // Positive: unique, sorted indices [0, 1] — must always pass.
 test third_party_act_with_unique_sorted_indices() {
-  validate_third_party_with_idxs([0, 1])
+  validate_third_party_with_idxs([0, 0])
 }
 
 // input 1 is consumed but never validated, allowing its tokens to be stolen.
@@ -385,7 +385,7 @@ test third_party_act_missing_indices() fail {
 // Out of bounds indices, trying to skip more inputs that we have. Should reject,
 // so marked as `fail`
 test third_party_act_unsorted_indices_must_fail() fail {
-  validate_third_party_with_idxs([1, 1])
+  validate_third_party_with_idxs([0, 1])
 }
 
 // ---------------------------------------------------------------------------

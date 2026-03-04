@@ -155,19 +155,11 @@ fn validate_3rd_party(
       dict.empty,
     )
 
-  // NOTE: check_seized_tokens "consumes" inputs it validates as it goes, whereas
-  // indices refer to the number of inputs to skip since the last input. So that
-  // means we have to skip one less input than advertised by the indexes...
-  //
-  // ...except for the first index! So we artificially increment this index to ensure
-  // we can handle all input in an homogeneous fashion.
-  expect [head_idx, ..tail_idxs] = input_idxs
-
   check_seized_tokens(
     prog_logic_cred,
     policy_id,
     tx.inputs,
-    [head_idx + 1, ..tail_idxs],
+    input_idxs,
     length_input_idxs,
     outputs,
     minted_or_burned,
@@ -291,7 +283,7 @@ fn check_seized_tokens(
     expect [Input { output: input, .. }, ..tail_inputs] =
       skip_assert(
         inputs,
-        idx - 1,
+        idx,
         fn(input) {
           // Ensure that any input we skip is NOT locked by a prog logic credential,
           // in case one attempt to spend programmable tokens by simply skipping over
