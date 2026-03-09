@@ -1137,6 +1137,101 @@ test third_party_act_wipe_insufficient_after_burn_fails() fail {
   )
 }
 
+// Negative: spending and burning some tokens (exact quantities), without executing the 3rd party script.
+test third_party_act_unauthorized_burn_compensate_spend() fail {
+  let tx =
+    Transaction {
+      ..transaction.placeholder,
+      inputs: [
+        fixture.some_input_with_programmable_tokens(
+          [(test_third_party_policy, "FOO", 100)],
+          "programmable tokens",
+        ),
+      ],
+      mint: from_asset(test_third_party_policy, "FOO", -50),
+      outputs: [
+        fixture.some_output_with_programmable_tokens(
+          [(test_third_party_policy, "FOO", 50)],
+        ),
+      ],
+      reference_inputs: [
+        fixture.some_reference_input_protocol_params(
+          fixture.protocol_params,
+          "protocol params",
+        ),
+        third_party_registry_node_ref_input(
+          test_third_party_policy,
+          test_third_party_cred,
+        ),
+      ],
+      withdrawals: [Pair(fixture.credential_validator_logic_global, 0)],
+    }
+
+  let redeemer =
+    ThirdPartyAct {
+      registry_node_idx: 1,
+      input_idxs: [0],
+      outputs_start_idx: 0,
+      length_input_idxs: 1,
+    }
+
+  programmable_logic_global.programmable_logic_global.withdraw(
+    fixture.policy_protocol_params,
+    redeemer,
+    fixture.credential_validator_logic_global,
+    tx,
+  )
+}
+
+// Negative: spending and burning some tokens (exact quantities), without providing adequate proof.
+test third_party_act_unproven_burn_compensate_spend() fail {
+  let tx =
+    Transaction {
+      ..transaction.placeholder,
+      inputs: [
+        fixture.some_input_with_programmable_tokens(
+          [(test_third_party_policy, "FOO", 100)],
+          "programmable tokens",
+        ),
+      ],
+      mint: from_asset(test_third_party_policy, "FOO", -50),
+      outputs: [
+        fixture.some_output_with_programmable_tokens(
+          [(test_third_party_policy, "FOO", 50)],
+        ),
+      ],
+      reference_inputs: [
+        fixture.some_reference_input_protocol_params(
+          fixture.protocol_params,
+          "protocol params",
+        ),
+        third_party_registry_node_ref_input(
+          test_third_party_policy,
+          test_third_party_cred,
+        ),
+      ],
+      withdrawals: [
+        Pair(fixture.credential_validator_logic_global, 0),
+        Pair(test_third_party_cred, 0),
+      ],
+    }
+
+  let redeemer =
+    ThirdPartyAct {
+      registry_node_idx: 1,
+      input_idxs: [],
+      outputs_start_idx: 0,
+      length_input_idxs: 0,
+    }
+
+  programmable_logic_global.programmable_logic_global.withdraw(
+    fixture.policy_protocol_params,
+    redeemer,
+    fixture.credential_validator_logic_global,
+    tx,
+  )
+}
+
 // ---------------------------------------------------------------------------
 // ThirdPartyAct Mint Interaction Tests
 //
