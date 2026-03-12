@@ -329,12 +329,6 @@ const fixture_plutarch_baseline_transfer: Transaction = {
           fixture.protocol_params,
           "protocol params",
         ),
-        // Token registry node ancestor, for inclusion validation
-        fixture.some_reference_input_tokens_registry_node(
-          "",
-          policy_programmable_token,
-          "ancestor",
-        ),
         // Token registry node holding the programmable policy being spent.
         fixture.some_reference_input_tokens_registry_node(
           policy_programmable_token,
@@ -349,7 +343,7 @@ const fixture_plutarch_baseline_transfer: Transaction = {
 /// Corresponding redeemer with a single proof of a token in the registry,
 /// located at position #2 in reference inputs
 const fixture_redeemer_plutarch_baseline_transfer: ProgrammableLogicGlobalRedeemer =
-  TransferAct { proofs: [TokenExists { node_idx: 2 }] }
+  TransferAct { proofs: [TokenExists { node_idx: 1 }] }
 
 test plutarch_baseline_transfer() {
   programmable_logic(

@@ -98,13 +98,69 @@ fn validate_transfer(
       },
     )
 
+  let has_withdrawal =
+    mk_has_withdrawal(
+      fn(script_hash) { script_hash == head_list(self.withdrawals).1st },
+      // NOTE: The programmable logic global is alway invoked via a withdrawal, so
+      // we know there's AT LEAST ONE withdrawal.
+      tail_list(self.withdrawals),
+    )
+
+  let get_registry_node =
+    fn(node_idx) {
+      let reference_input = elem_at(self.reference_inputs, node_idx)
+      expect InlineDatum(data) = reference_input.output.datum
+      expect has_currency_symbol(reference_input.output.value, registry_node_cs)
+      data
+    }
+
   // Check transfer logic for each programmable token type and filter to only programmable tokens.
   check_transfer_and_compute_prog_value(
     input_prog_value,
     output_prog_value,
     proofs,
-    validate_single_cs(self, _, _, registry_node_cs),
+    validate_single_cs(get_registry_node, has_withdrawal, _, _),
   )
+}
+
+fn mk_has_withdrawal(
+  has_withdrawal: fn(Credential) -> Bool,
+  withdrawals: Pairs<Credential, Int>,
+) -> fn(Credential) -> Bool {
+  when withdrawals is {
+    [] -> has_withdrawal
+    [Pair(head, _), ..tail] ->
+      mk_has_withdrawal(
+        fn(script_hash) { head == script_hash || has_withdrawal(script_hash) },
+        tail,
+      )
+  }
+}
+
+fn mk_get_registry_node(
+  registry_node_cs: PolicyId,
+  ref_idx: Int,
+  reference_inputs: List<Input>,
+  get_registry_node: fn(Int) -> Data,
+) -> fn(Int) -> Data {
+  when reference_inputs is {
+    [] -> get_registry_node
+    [head, ..tail] ->
+      mk_get_registry_node(
+        registry_node_cs,
+        ref_idx + 1,
+        tail,
+        fn(proof_idx) {
+          if ref_idx == proof_idx {
+            expect has_currency_symbol(head.output.value, registry_node_cs)
+            expect InlineDatum(data) = head.output.datum
+            data
+          } else {
+            get_registry_node(proof_idx)
+          }
+        },
+      )
+  }
 }
 
 fn validate_3rd_party(
@@ -119,13 +175,15 @@ fn validate_3rd_party(
   let Input { output: registry_ref_input, .. } =
     elem_at(tx.reference_inputs, registry_node_idx)
 
+  expect InlineDatum(registry_node_data) = registry_ref_input.datum
+
   // Extract registry details from datum
   let
     policy_id,
     _,
     _,
     third_party_transfer_logic_script,
-  <- expect_registry_node(registry_ref_input.datum)
+  <- expect_registry_node(registry_node_data)
 
   // Validate registry node is authentic
   expect has_currency_symbol(registry_ref_input.value, registry_node_cs)
@@ -430,37 +488,34 @@ fn do_check_transfer(
 /// Returns False if the token is NOT a programmable token (TokenDoesNotExist with valid proof)
 /// FAILS the transaction if any proof is invalid
 fn validate_single_cs(
-  self: Transaction,
+  get_registry_node: fn(Int) -> Data,
+  has_withdrawal: fn(Credential) -> Bool,
   cs: PolicyId,
   proof: RegistryProof,
-  registry_node_cs: PolicyId,
 ) -> Bool {
   expect node_idx: Int = head_list(unconstr_fields(proof))
 
-  // Get the registry node details
-  let node_input = elem_at(self.reference_inputs, node_idx)
   let
     key,
     next,
     transfer_logic_script,
     _,
-  <- expect_registry_node(node_input.output.datum)
-
-  // Validate this is a legitimate registry node
-  expect has_currency_symbol(node_input.output.value, registry_node_cs)
+  <- expect_registry_node(get_registry_node(node_idx))
 
   when proof is {
     TokenExists { .. } -> {
       // Validate the node's key matches the currency symbol
       expect key == cs
+
       // Validate the transfer logic script is invoked
-      has_key(self.withdrawals, transfer_logic_script)
+      has_withdrawal(transfer_logic_script)
     }
 
     TokenDoesNotExist { .. } -> {
       // Validate the node covers the currency symbol (nodeKey < cs < nodeNext)
       expect bytearray_lt(key, cs)
       expect bytearray_lt(cs, next)
+
       // This is NOT a programmable token (proof is valid)
       False
     }
@@ -475,10 +530,9 @@ fn validate_single_cs(
 /// This even makes the contract more 'interoperable', as the linked-list datum
 /// can change in addititive manner without invalidating this contract.
 fn expect_registry_node(
-  datum: Datum,
+  inline_datum: Data,
   return: fn(ByteArray, ByteArray, Credential, Credential) -> result,
 ) -> result {
-  expect InlineDatum(inline_datum) = datum
   let fields = unconstr_fields(inline_datum)
   expect key: ByteArray = head_list(fields)
   let fields = tail_list(fields)
