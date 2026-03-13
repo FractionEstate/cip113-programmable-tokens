@@ -41,7 +41,7 @@ pub fn new_registry_node_getter(
         tail,
         fn(proof_idx) {
           if ref_idx == proof_idx {
-            expect assets.peek_first(head.output.value) == registry_node_cs
+            expect assets.peek_first(head.output) == registry_node_cs
             expect InlineDatum(data) = head.output.datum
             data
           } else {

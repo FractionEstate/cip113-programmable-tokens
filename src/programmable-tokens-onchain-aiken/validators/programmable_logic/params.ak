@@ -39,7 +39,7 @@ fn get_protocol_params_ref(
   ref_inputs: List<Input>,
 ) -> Input {
   let head = head_list(ref_inputs)
-  if assets.peek_first(head.output.value) == protocol_params_cs {
+  if assets.peek_first(head.output) == protocol_params_cs {
     head
   } else {
     get_protocol_params_ref(protocol_params_cs, tail_list(ref_inputs))

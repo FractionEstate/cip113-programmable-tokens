@@ -13,6 +13,7 @@ pub type Assets =
 pub type SumStrategy<i> =
   fn(i, fn(Output) -> Assets, fn() -> Assets) -> Assets
 
+/// A Convenient helper to extract assets from values. Comes at no cost since it is usually inlined by the compiler.
 pub fn from_value(self: Value) -> Assets {
   self |> assets.to_dict |> dict.to_pairs
 }
@@ -22,7 +23,7 @@ pub fn from_value(self: Value) -> Assets {
 pub fn split_at(
   self: Value,
   at: PolicyId,
-  return: fn(Pairs<PolicyId, Tokens>, Tokens, Pairs<PolicyId, Tokens>) -> result,
+  return: fn(Assets, Tokens, Assets) -> result,
 ) -> result {
   do_split_at(from_value(self), at, [], return)
 }
@@ -51,8 +52,9 @@ fn do_split_at(
   }
 }
 
-pub fn peek_first(self: Value) -> PolicyId {
-  list.head(list.tail(from_value(self))).1st
+/// Lookup the first asset policy from an output, or fails loudly if the output holds no tokens (beyond Ada).
+pub fn peek_first(self: Output) -> PolicyId {
+  list.head(list.tail(from_value(self.value))).1st
 }
 
 /// A faster version of assets.merge that preserves empty maps. This allows to
@@ -71,6 +73,7 @@ pub fn peek_first(self: Value) -> PolicyId {
 /// ```aiken
 /// collect(
 ///   self.inputs,
+///   [],
 ///   fn(input, select, discard) {
 ///     let output = input.output
 ///     if output.address.payment_credential == needle {
@@ -83,11 +86,11 @@ pub fn peek_first(self: Value) -> PolicyId {
 /// ```
 ///
 /// /!\ PRE-CONDITION /!\
-/// The given zero value is not expected to contain any Ada. This is enforced
+/// The given zero assets is expected to not contain any Ada. This is enforced
 /// when assertions are enabled (`--env with_assertions`).
 ///
-/// This is generally true when the initial zero is empty or coming from the
-/// mint value.
+/// This is generally true when the initial zero is an empty list or coming
+/// from the mint value.
 pub fn collect(elems: List<i>, zero: Assets, strategy: SumStrategy<i>) -> Assets {
   do_collect(elems, strategy, env.assert_no_ada_policy(zero))
 }
@@ -105,7 +108,14 @@ fn do_collect(elems: List<i>, strategy: SumStrategy<i>, sum: Assets) -> Assets {
           fn(output) {
             output.value
               |> from_value
+              // Drop ADA, guaranteed to be present in outputs.
               |> list.tail
+              // NOTE: left-optimised union
+              // The `union` consumes the left argument into the right argument. So it is
+              // generally better to provide the smallest argument as left value. The `sum`
+              // will generally grow as large as outputs and in many scenario will no be much
+              // larger. However, it is very often smaller initially (often empty). Hence why
+              // we force it as first argument here.
               |> union(sum, _)
           },
           // Output is discarded
@@ -117,30 +127,30 @@ fn do_collect(elems: List<i>, strategy: SumStrategy<i>, sum: Assets) -> Assets {
 
 /// Merge two Assets by summing token quantities.
 /// Used to combine validated input prog value with validated mint prog value.
-fn union(left: Assets, right: Assets) -> Assets {
+pub fn union(left: Assets, right: Assets) -> Assets {
   when left is {
     [] -> right
+    // NOTE: Preserving null assets
+    // It is primordial here to not discard assets if even they result in an
+    // empty dict. This is because the 'left' assets may have negative quantities
+    // coming from burns. If a burn is fully cover by a spend, we must preserve
+    // the key in the map to ensure that validations necessary to that policy
+    // occur as expected.
     [Pair(k, v), ..rest] -> union(rest, do_insert(right, k, v))
   }
 }
 
-fn do_insert(self: Assets, k: PolicyId, v: Tokens) -> Assets {
+fn do_insert(self: Assets, k1: PolicyId, v1: Tokens) -> Assets {
   when self is {
-    [] -> [Pair(k, v)]
+    [] -> [Pair(k1, v1)]
     [Pair(k2, v2), ..rest] ->
-      if less_than_bytearray(k, k2) {
-        [Pair(k, v), ..self]
+      if less_than_bytearray(k1, k2) {
+        [Pair(k1, v1), ..self]
       } else {
-        if k == k2 {
-          // NOTE: Preserving null assets
-          // It is primordial here to not discard assets if even they result in an
-          // empty set. This is because the zero value may have negative quantities
-          // coming from burns. If a burn is fully cover by a spend, we must preserve
-          // the key in the map to ensure that validations necessary to that policy
-          // occur as expected.
-          [Pair(k, dict.union_with(v, v2, dict_strategy.sum())), ..rest]
+        if k1 == k2 {
+          [Pair(k1, dict.union_with(v1, v2, dict_strategy.sum())), ..rest]
         } else {
-          [Pair(k2, v2), ..do_insert(rest, k, v)]
+          [Pair(k2, v2), ..do_insert(rest, k1, v1)]
         }
       }
   }
