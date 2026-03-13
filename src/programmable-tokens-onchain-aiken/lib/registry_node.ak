@@ -60,10 +60,10 @@ pub fn new_registry_node_getter(
 /// This even makes the contract more 'interoperable', as the linked-list datum
 /// can change in addititive manner without invalidating this contract.
 pub fn with_key_and_transfer_logic(
-  inline_datum: Data,
+  data: Data,
   return: fn(ByteArray, Credential) -> result,
 ) -> result {
-  let fields = unconstr_fields(inline_datum)
+  let fields = unconstr_fields(data)
   expect key: ByteArray = list.head(fields)
   expect transfer_logic_script: Credential =
     list.head(list.tail(list.tail(fields)))
@@ -71,42 +71,22 @@ pub fn with_key_and_transfer_logic(
 }
 
 pub fn with_key_and_next_key(
-  inline_datum: Data,
+  data: Data,
   return: fn(ByteArray, ByteArray) -> result,
 ) -> result {
-<<<<<<< HEAD
-  let fields = unconstr_fields(inline_datum)
-  expect key: ByteArray = head_list(fields)
-  let fields = tail_list(fields)
-  expect next: ByteArray = head_list(fields)
-||||||| parent of 5f2b52b (fixup libs)
-  let fields = unconstr_fields(data)
-  expect key: ByteArray = head_list(fields)
-  let fields = tail_list(fields)
-  expect next: ByteArray = head_list(fields)
-=======
   let fields = unconstr_fields(data)
   expect key: ByteArray = list.head(fields)
   let fields = list.tail(fields)
   expect next: ByteArray = list.head(fields)
->>>>>>> 5f2b52b (fixup libs)
   return(key, next)
 }
 
 pub fn with_key_and_3rd_party_logic(
-  inline_datum: Data,
+  data: Data,
   return: fn(ByteArray, Credential) -> result,
 ) -> result {
-<<<<<<< HEAD
-  let fields = unconstr_fields(inline_datum)
-  expect key: ByteArray = head_list(fields)
-||||||| parent of 5f2b52b (fixup libs)
-  let fields = unconstr_fields(data)
-  expect key: ByteArray = head_list(fields)
-=======
   let fields = unconstr_fields(data)
   expect key: ByteArray = list.head(fields)
->>>>>>> 5f2b52b (fixup libs)
   expect third_party_transfer_logic_script: Credential =
     list.head(list.tail(list.tail(list.tail(fields))))
   return(key, third_party_transfer_logic_script)
