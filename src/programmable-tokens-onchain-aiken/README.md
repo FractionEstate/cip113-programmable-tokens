@@ -239,7 +239,12 @@ This is high-quality research and development code with the following characteri
 This is a complete Aiken rewrite of the original Plutarch implementation ([wsc-poc](https://github.com/input-output-hk/wsc-poc)) by Phil DiSarro and the IOG team.
 
 **What changed:**
-- All validators rewritten in Aiken (from Plutarch/Haskell) with equivalent on-chain logic
+- All validators rewritten in Aiken (from Plutarch/Haskell) with (mostly) equivalent on-chain logic:
+  - Registry proofs for mints and spends are combined in Aiken, disjoints in Plutarch; this is possible due to how Aiken counts and validate tokens in one pass.
+  - For the third-party action, we use a different input indices approaches: Aiken indices indicates inputs to be skipped, whereas Plutarch indicates relative positions. In particular, only programmable inputs must be specified in the Aiken's redeemer, whereas Plutarch requires all script-locked inputs to be acknowledged. Different checks then occurs on both side to ensure both approaches to be viable, but with different trade-offs.
+  - While the resulting checks are equivalent, the logic for constructing and validating assets in particular is significantly different. The third-party validations have been mostly rewritten from the ground-up to maximise the code-reuse with the transfer logic in order to reduce the overall script size.
+  - The order in which certain validations occur is also different, so execution may halt for different reasons on both implementations.
+  - Both implementations leverage some form of caching internally, but using different heuristic. For example, Plutarch remembers the last withdrawal checked when asserting token proofs, whereas Aiken builds an lightweight withdrawal checker from the initial withdrawal list which is then passed around various functions.
 - Added explicit stake credential checks on minting outputs (`issuance_mint`) to prevent permanent token locking — the original did not enforce this
 - Multi-UTxO seizure support (`ThirdPartyAct`) ported from Plutarch PR #99
 - Aiken's `Dict`/`Pairs` types replace Plutarch's `PMap` — keys are lexicographically sorted by default, which matches the registry's sorted-list requirement
