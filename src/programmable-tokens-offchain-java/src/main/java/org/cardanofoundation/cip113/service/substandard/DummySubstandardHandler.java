@@ -13,7 +13,6 @@ import com.bloxbean.cardano.client.plutus.spec.BytesPlutusData;
 import com.bloxbean.cardano.client.plutus.spec.ConstrPlutusData;
 import com.bloxbean.cardano.client.plutus.spec.ListPlutusData;
 import com.bloxbean.cardano.client.quicktx.QuickTxBuilder;
-import com.bloxbean.cardano.client.quicktx.ScriptTx;
 import com.bloxbean.cardano.client.quicktx.Tx;
 import com.bloxbean.cardano.client.transaction.spec.Asset;
 import com.bloxbean.cardano.client.transaction.spec.MultiAsset;
@@ -23,6 +22,7 @@ import com.bloxbean.cardano.client.util.HexUtil;
 import com.bloxbean.cardano.yaci.core.model.certs.CertificateType;
 import com.bloxbean.cardano.yaci.store.utxo.storage.impl.model.UtxoId;
 import com.bloxbean.cardano.yaci.store.utxo.storage.impl.repository.UtxoRepository;
+import com.easy1staking.cardano.comparator.TransactionInputComparator;
 import com.easy1staking.cardano.model.AssetType;
 import com.easy1staking.cardano.util.UtxoUtil;
 import com.easy1staking.util.Pair;
@@ -359,7 +359,7 @@ public class DummySubstandardHandler implements SubstandardHandler, BasicOperati
                         network.getCardanoNetwork());
 
 
-                var tx = new ScriptTx()
+                var tx = new Tx()
                         .collectFrom(registrarUtxos)
                         .collectFrom(directoryUtxo, ConstrPlutusData.of(0))
                         .withdraw(substandardIssueAddress.getAddress(), BigInteger.ZERO, BigIntPlutusData.of(100))
@@ -486,7 +486,7 @@ public class DummySubstandardHandler implements SubstandardHandler, BasicOperati
                     recipientAddress.getDelegationCredential().get(),
                     network.getCardanoNetwork());
 
-            var tx = new ScriptTx()
+            var tx = new Tx()
                     .collectFrom(feePayerUtxos)
                     .withdraw(substandardIssueAddress.getAddress(), BigInteger.ZERO, BigIntPlutusData.of(100))
                     // Redeemer is DirectoryInit (constr(0))
@@ -635,10 +635,25 @@ public class DummySubstandardHandler implements SubstandardHandler, BasicOperati
                     ))
                     .build();
 
+            var protocolParamsRefInput = TransactionInput.builder()
+                    .transactionId(protocolParamsUtxo.getTxHash())
+                    .index(protocolParamsUtxo.getOutputIndex())
+                    .build();
+
+            var progTokenRegistryRefInput = TransactionInput.builder()
+                    .transactionId(progTokenRegistry.getTxHash())
+                    .index(progTokenRegistry.getOutputIndex())
+                    .build();
+
+            var sortedReferenceInputs = Stream.of(protocolParamsRefInput, progTokenRegistryRefInput)
+                    .sorted(new TransactionInputComparator())
+                    .toList();
+
+            var registryIndex = sortedReferenceInputs.indexOf(progTokenRegistryRefInput);
 
             var programmableGlobalRedeemer = ConstrPlutusData.of(0,
                     // only one prop and it's a list
-                    ListPlutusData.of(ConstrPlutusData.of(0, BigIntPlutusData.of(1)))
+                    ListPlutusData.of(ConstrPlutusData.of(0, BigIntPlutusData.of(registryIndex)))
             );
 
             // FIXME:
@@ -670,7 +685,7 @@ public class DummySubstandardHandler implements SubstandardHandler, BasicOperati
                             })
                     .first();
 
-            var tx = new ScriptTx()
+            var tx = new Tx()
                     .collectFrom(senderUtxos);
 
             inputUtxos.forEach(utxo -> {
