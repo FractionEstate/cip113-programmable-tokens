@@ -82,10 +82,12 @@ All tests should pass:
 
 ## Documentation
 
-📚 **Documentation is available in the [`docs/`](./documentation/) directory:**
+📚 **Documentation is available in the [`documentation/`](./documentation/) directory:**
 
 - **[Introduction](./documentation/01-INTRODUCTION.md)** - Problem statement, concepts, and benefits
 - **[Architecture](./documentation/02-ARCHITECTURE.md)** - System design, validator coordination, on-chain data structures, and validation flows
+- **[Developing Substandards](./documentation/09-DEVELOPING-SUBSTANDARDS.md)** - Guide for implementing new substandards (issuance, transfer, and third-party logic)
+- **[Integration Guides](./documentation/08-INTEGRATION-GUIDES.md)** - For wallet developers, indexers, and dApp developers
 
 
 ## Core Components
@@ -116,8 +118,8 @@ Substandards define the actual rules that specific programmable tokens must obey
 
 Substandard implementations live in the [`substandards/`](../../substandards/) directory:
 
-- **[Dummy](../../substandards/dummy/)** — Simple permissioned transfer requiring a specific credential
-- **[Freeze and Seize](../../substandards/freeze-and-seize/)** — Denylist-aware transfer logic, seizure/freeze operations, and on-chain denylist management for regulated stablecoins
+- **[Dummy](../substandards/dummy/)** — Simple permissioned transfer requiring a specific credential
+- **[Freeze and Seize](../substandards/freeze-and-seize/)** — Denylist-aware transfer logic, seizure/freeze operations, and on-chain denylist management for regulated stablecoins
 
 ### Validator Reference
 
@@ -195,7 +197,7 @@ The project includes a complete example of a regulated stablecoin with freeze an
 - **Constant-Time Checks** - O(1) verification using covering node proofs
 - **Issuer Controls** - Authorized parties can freeze/seize tokens
 
-See the [freeze-and-seize substandard](../../substandards/freeze-and-seize/) for the implementation.
+See the [freeze-and-seize substandard](../substandards/freeze-and-seize/) for the implementation.
 
 ## Standards
 

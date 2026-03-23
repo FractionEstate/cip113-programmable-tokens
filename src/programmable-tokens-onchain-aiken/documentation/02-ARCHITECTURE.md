@@ -88,7 +88,7 @@ graph TB
     IM -->|"references"| ICH
 ```
 
-The diagram above shows the **core CIP-113 standard** (Token Custody, Coordination Layer, Registry, Token Issuance, Protocol Bootstrap) and indicates where **substandards** plug in. The core standard is deployed once and shared by all programmable tokens. Substandards are pluggable — different tokens can register different transfer logic and supporting validators depending on their compliance requirements, without modifying the core framework. See the [`substandards/`](../../../substandards/) directory for implementations (dummy, freeze-and-seize).
+The diagram above shows the **core CIP-113 standard** (Token Custody, Coordination Layer, Registry, Token Issuance, Protocol Bootstrap) and indicates where **substandards** plug in. The core standard is deployed once and shared by all programmable tokens. Substandards are pluggable — different tokens can register different transfer logic and supporting validators depending on their compliance requirements, without modifying the core framework. See the [`substandards/`](../../substandards/) directory for implementations (dummy, freeze-and-seize).
 
 ### Validator Reference
 
@@ -104,7 +104,7 @@ The diagram above shows the **core CIP-113 standard** (Token Custody, Coordinati
 | `issuance_mint` | Mint | `programmable_logic_base`, `minting_logic_cred` | Mints/burns programmable tokens. Parameterized per token type. |
 | `issuance_cbor_hex_mint` | Mint | `utxo_ref` | One-shot mint of the reference NFT holding issuance script template bytes. |
 
-Substandard validators (transfer logic, denylist management, etc.) live in the [`substandards/`](../../../substandards/) directory as separate Aiken modules.
+Substandard validators (transfer logic, denylist management, etc.) live in the [`substandards/`](../../substandards/) directory as separate Aiken modules.
 
 ### Dual Validator Delegation
 
@@ -225,7 +225,7 @@ After:   [covering: key=A, next=B]  [new: key=B, next=C]
 
 ## Denylist System
 
-> **Note:** The denylist is part of the [freeze-and-seize substandard](../../../substandards/freeze-and-seize/), not the core CIP-113 framework. It is documented here because it illustrates how substandards extend the core architecture.
+> **Note:** The denylist is part of the [freeze-and-seize substandard](../../substandards/freeze-and-seize/), not the core CIP-113 framework. It is documented here because it illustrates how substandards extend the core architecture.
 
 The denylist uses the same sorted linked list pattern as the registry, but for credential hashes instead of policy IDs.
 
@@ -427,4 +427,4 @@ The `ThirdPartyAct` handler explicitly checks that the input value differs from 
 
 ---
 
-**Next**: Return to the [README](../README.md) for build instructions, or see the [Introduction](./01-INTRODUCTION.md) for high-level concepts.
+**Next**: [Developing Substandards](./09-DEVELOPING-SUBSTANDARDS.md) for a guide on implementing custom substandards | **Back to**: [README](../README.md) | [Introduction](./01-INTRODUCTION.md)
