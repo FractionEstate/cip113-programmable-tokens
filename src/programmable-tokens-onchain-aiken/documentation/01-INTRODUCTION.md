@@ -303,6 +303,7 @@ Now that you understand what programmable tokens are and why they exist, you can
 ### Learn More
 
 - **[Architecture](./02-ARCHITECTURE.md)** - System design, validator coordination, on-chain data structures, and validation flows
+- **[Developing Substandards](./09-DEVELOPING-SUBSTANDARDS.md)** - Guide for implementing new substandards with custom compliance logic
 
 ### Try It Out
 
@@ -316,7 +317,6 @@ aiken check
 
 - 📖 [Main README](../README.md) - Project overview and quick start
 - 🏛️ [Architecture Deep-Dive](./02-ARCHITECTURE.md) - Validator coordination, data structures, and validation flows
-- 🔄 [CIP-143 Flow Documentation](../../../CIP-0143-FLOW.md) - Complete transaction flows
 
 ---
 

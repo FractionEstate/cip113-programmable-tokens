@@ -427,4 +427,4 @@ A dApp UTxO at `addr(programmable_logic_base, dapp_script_hash)` can hold both p
 
 ---
 
-**Previous**: [Migration Notes](./07-MIGRATION-NOTES.md) | **Back to**: [README](../README.md)
+**Next**: [Developing Substandards](./09-DEVELOPING-SUBSTANDARDS.md) | **Back to**: [README](../README.md)
